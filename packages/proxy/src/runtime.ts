@@ -4,6 +4,7 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import getPort from "get-port";
 
 import { DEFAULT_GATEWAY_HOST, DEFAULT_INTERNAL_HOST, DEFAULT_LOG_LEVEL } from "./constants.js";
 import { ensureProxyArtifacts } from "./assets.js";
@@ -85,26 +86,8 @@ async function stopChildProcess(processName: string, child?: ReturnType<typeof s
 }
 
 export async function findAvailablePort(host = DEFAULT_INTERNAL_HOST) {
-  return new Promise<number>((resolve, reject) => {
-    const server = net.createServer();
-    server.once("error", reject);
-    server.once("listening", () => {
-      const address = server.address();
-      if (!address || typeof address === "string") {
-        server.close(() => {
-          reject(new Error("Failed to resolve an available port."));
-        });
-        return;
-      }
-      server.close((error) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-        resolve(address.port);
-      });
-    });
-    server.listen(0, host);
+  return getPort({
+    host,
   });
 }
 
@@ -268,7 +251,9 @@ export class ProxyGateway {
       }
 
       try {
-        const response = await fetch(`${this.gatewayUrl}/v1/models`);
+        const response = await fetch(`${this.gatewayUrl}/v1/models`, {
+          signal: AbortSignal.timeout(1_000),
+        });
         if (response.ok) {
           return;
         }

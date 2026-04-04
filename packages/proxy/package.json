@@ -19,6 +19,7 @@
     "prepublishOnly": "vp run build"
   },
   "dependencies": {
+    "get-port": "catalog:",
     "yaml": "^2.8.1"
   },
   "devDependencies": {
