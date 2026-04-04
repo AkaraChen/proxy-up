@@ -8,8 +8,18 @@
     "build": "tsc && vp build",
     "preview": "vp preview"
   },
+  "dependencies": {
+    "@proxy-up/proxy": "workspace:*",
+    "@vitejs/plugin-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-grab": "catalog:",
+    "zustand": "catalog:"
+  },
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "~5.9.3",
     "vite": "catalog:",

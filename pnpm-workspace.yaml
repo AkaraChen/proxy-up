@@ -6,12 +6,19 @@ packages:
 catalog:
   "@tailwindcss/vite": ^4.2.2
   "@types/node": ^24
+  "@types/react": ^19.2.14
+  "@types/react-dom": ^19.2.3
+  "@vitejs/plugin-react": ^6.0.1
   get-port: ^7.2.0
+  react: ^19.2.4
+  react-dom: ^19.2.4
+  react-grab: ^0.1.29
   tailwindcss: ^4.2.2
   typescript: ^5
   vite: npm:@voidzero-dev/vite-plus-core@latest
   vite-plus: latest
   vitest: npm:@voidzero-dev/vite-plus-test@latest
+  zustand: ^5.0.12
 
 catalogMode: prefer
 overrides:
