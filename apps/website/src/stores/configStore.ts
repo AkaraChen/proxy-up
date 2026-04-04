@@ -38,6 +38,9 @@ interface ProxyConfigState {
   updateLogLevel: (level: ProxyLogLevel) => void;
   updateModelAliases: (aliases: ProxyModelAliases) => void;
   updateArtifacts: (artifacts: ProxyArtifactOptions) => void;
+  updateGatewayHost: (host: string) => void;
+  updateCleanupOnStop: (cleanup: boolean) => void;
+  updateWorkDir: (workDir: string | undefined) => void;
   addProvider: (provider: ProxyProviderOptions) => void;
   removeProvider: (index: number) => void;
   updateProvider: (index: number, provider: Partial<ProxyProviderOptions>) => void;
@@ -94,6 +97,21 @@ export const useProxyConfigStore = create(
       updateArtifacts: (artifacts) =>
         set((state) => ({
           config: { ...state.config, artifacts },
+        })),
+
+      updateGatewayHost: (gatewayHost) =>
+        set((state) => ({
+          config: { ...state.config, gatewayHost },
+        })),
+
+      updateCleanupOnStop: (cleanupOnStop) =>
+        set((state) => ({
+          config: { ...state.config, cleanupOnStop },
+        })),
+
+      updateWorkDir: (workDir) =>
+        set((state) => ({
+          config: { ...state.config, workDir },
         })),
 
       addProvider: (provider) =>
