@@ -1,47 +1,10 @@
-import {
-  Input,
-  ListBox,
-  ListBoxItem,
-  Select,
-  Switch,
-  TextField,
-} from "@heroui/react";
-import type { Key, ReactNode } from "react";
+import { Input, ListBox, ListBoxItem, Select, Switch, TextField } from "@heroui/react";
+import type { Key } from "react";
 import { useProxyConfigStore } from "../stores";
 import { LOG_LEVEL_OPTIONS } from "../components/config/data";
-import {
-  DEFAULT_GATEWAY_HOST,
-  DEFAULT_GATEWAY_PORT,
-} from "@proxy-up/proxy/browser";
+import { DEFAULT_GATEWAY_HOST, DEFAULT_GATEWAY_PORT } from "@proxy-up/proxy/browser";
 import type { ProxyLogLevel } from "@proxy-up/proxy/browser";
-
-function SettingRow({
-  label,
-  description,
-  children,
-}: {
-  label: string;
-  description: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-6 py-4">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-gray-900">{label}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
-      </div>
-      <div className="shrink-0">{children}</div>
-    </div>
-  );
-}
-
-function SectionHeading({ children }: { children: ReactNode }) {
-  return (
-    <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1 mt-6 first:mt-0">
-      {children}
-    </h2>
-  );
-}
+import { SectionHeading, SettingRow } from "../components/common";
 
 function GatewayPage() {
   const {
@@ -69,10 +32,7 @@ function GatewayPage() {
       <SectionHeading>Network</SectionHeading>
       <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white px-4">
         <SettingRow label="Host" description="The address the gateway binds to.">
-          <TextField
-            value={gatewayHost}
-            onChange={(v) => updateGatewayHost(v)}
-          >
+          <TextField value={gatewayHost} onChange={(v) => updateGatewayHost(v)}>
             <Input className="w-44" placeholder={DEFAULT_GATEWAY_HOST} />
           </TextField>
         </SettingRow>
@@ -99,14 +59,11 @@ function GatewayPage() {
 
       <SectionHeading>Logging</SectionHeading>
       <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white px-4">
-        <SettingRow
-          label="Log Level"
-          description="Controls the verbosity of gateway output."
-        >
+        <SettingRow label="Log Level" description="Controls the verbosity of gateway output.">
           <Select
             selectedKey={logLevel}
-            onSelectionChange={(key: Key) =>
-              updateLogLevel(key as ProxyLogLevel)
+            onSelectionChange={(key: Key | null) =>
+              key != null && updateLogLevel(key as ProxyLogLevel)
             }
           >
             <Select.Trigger className="w-32">
@@ -155,4 +112,3 @@ function GatewayPage() {
 }
 
 export default GatewayPage;
-
