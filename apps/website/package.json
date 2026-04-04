@@ -9,6 +9,7 @@
     "preview": "vp preview"
   },
   "dependencies": {
+    "@heroicons/react": "catalog:",
     "@heroui/react": "catalog:",
     "@heroui/styles": "catalog:",
     "@proxy-up/proxy": "workspace:*",
