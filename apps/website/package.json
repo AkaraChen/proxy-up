@@ -16,6 +16,7 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-grab": "catalog:",
+    "wouter": "catalog:",
     "zustand": "catalog:"
   },
   "devDependencies": {
