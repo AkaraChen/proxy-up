@@ -259,7 +259,8 @@ function ProviderPanel() {
     update({
       providerInterface,
       model: meta?.modelExample ?? provider.model,
-      baseUrl: meta?.requiresBaseUrl ? (meta.baseUrlExample ?? "") : undefined,
+      // Only prefill baseUrl when the new type requires it; preserve any existing user value otherwise
+      ...(meta?.requiresBaseUrl ? { baseUrl: meta.baseUrlExample ?? "" } : {}),
     });
   };
 
