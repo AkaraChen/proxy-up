@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import { BUILTIN_PROVIDER_ENDPOINTS, type BuiltinProviderEndpoint } from "./constants.js";
 import type {
   NormalizedProxyProvider,
@@ -106,6 +104,17 @@ function sanitizeBaseUrlPathPrefix(pathname: string) {
   return pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
 }
 
+function hashSuffix(input: string) {
+  let hash = 2166136261;
+
+  for (const character of input) {
+    hash ^= character.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return (hash >>> 0).toString(16).padStart(8, "0").slice(0, 8);
+}
+
 function createClusterName(
   providerInterface: ProxyProviderInterface,
   hostname: string,
@@ -113,10 +122,7 @@ function createClusterName(
   pathPrefix?: string,
 ) {
   const safeBase = `${providerInterface}_${hostname}_${port}`.replaceAll(/[^a-zA-Z0-9_]/g, "_");
-  const suffix = createHash("sha1")
-    .update(`${hostname}:${port}${pathPrefix ?? ""}`)
-    .digest("hex")
-    .slice(0, 8);
+  const suffix = hashSuffix(`${hostname}:${port}${pathPrefix ?? ""}`);
 
   return `${safeBase}_${suffix}`;
 }

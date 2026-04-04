@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import type { ProxyGateway, GeneratedProxyConfig } from "@proxy-up/proxy";
+import type { GeneratedProxyConfig } from "@proxy-up/proxy/browser";
+import type { ProxyGateway } from "@proxy-up/proxy";
 
 interface ProxyRuntimeState {
   gateway: ProxyGateway | null;

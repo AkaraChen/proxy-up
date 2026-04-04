@@ -9,6 +9,7 @@
   "type": "module",
   "exports": {
     ".": "./dist/index.mjs",
+    "./browser": "./dist/browser.mjs",
     "./package.json": "./package.json"
   },
   "scripts": {

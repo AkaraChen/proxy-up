@@ -9,6 +9,8 @@
     "preview": "vp preview"
   },
   "dependencies": {
+    "@heroui/react": "catalog:",
+    "@heroui/styles": "catalog:",
     "@proxy-up/proxy": "workspace:*",
     "@vitejs/plugin-react": "catalog:",
     "react": "catalog:",

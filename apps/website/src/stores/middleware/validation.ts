@@ -1,4 +1,4 @@
-import type { ProxyGatewayOptions } from "@proxy-up/proxy";
+import type { ProxyGatewayOptions } from "@proxy-up/proxy/browser";
 
 export interface ValidationErrors {
   providers: Map<number, string[]>;

@@ -7,7 +7,7 @@ import type {
   ProxyLogLevel,
   ProxyModelAliases,
   ProxyArtifactOptions,
-} from "@proxy-up/proxy";
+} from "@proxy-up/proxy/browser";
 import {
   DEFAULT_GATEWAY_HOST,
   DEFAULT_GATEWAY_PORT,
@@ -18,7 +18,7 @@ import {
   DEFAULT_PLANO_VERSION,
   DEFAULT_ENVOY_VERSION,
   DEFAULT_CACHE_DIR,
-} from "@proxy-up/proxy";
+} from "@proxy-up/proxy/browser";
 
 interface ProxyConfigState {
   config: {

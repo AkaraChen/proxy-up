@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-// @ts-expect-error - CSS module import
+// @ts-expect-error - CSS side-effect import
 import "./style.css";
 import App from "./App";
 

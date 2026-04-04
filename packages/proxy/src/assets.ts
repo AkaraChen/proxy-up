@@ -8,12 +8,12 @@ import { createGunzip } from "node:zlib";
 import { spawn } from "node:child_process";
 
 import {
-  DEFAULT_CACHE_DIR,
   DEFAULT_ENVOY_RELEASE_BASE_URL,
   DEFAULT_ENVOY_VERSION,
   DEFAULT_PLANO_RELEASE_BASE_URL,
   DEFAULT_PLANO_VERSION,
 } from "./constants.js";
+import { DEFAULT_CACHE_DIR } from "./runtime-defaults.js";
 import type { ProxyArtifactOptions, ResolvedProxyArtifacts } from "./types.js";
 
 async function ensureExists(pathname: string, label: string) {

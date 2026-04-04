@@ -1,6 +1,3 @@
-import os from "node:os";
-import path from "node:path";
-
 import type { ProxyProviderInterface } from "./types.js";
 
 export const DEFAULT_PLANO_VERSION = "0.4.17";
@@ -19,8 +16,6 @@ export const DEFAULT_BRIGHTSTAFF_PORT = 9091;
 export const DEFAULT_ADMIN_PORT = 9901;
 
 export const DEFAULT_LOG_LEVEL = "info";
-
-export const DEFAULT_CACHE_DIR = path.join(os.homedir(), ".cache", "proxy-up", "proxy");
 
 export interface BuiltinProviderEndpoint {
   host: string;
@@ -83,7 +78,3 @@ export const BUILTIN_PROVIDER_ENDPOINTS: Record<
     protocol: "https",
   },
 };
-
-export function getDefaultTrustedCaPath() {
-  return process.platform === "darwin" ? "/etc/ssl/cert.pem" : "/etc/ssl/certs/ca-certificates.crt";
-}
