@@ -4,8 +4,10 @@ packages:
   - tools/*
 
 catalog:
+  "@tailwindcss/vite": ^4.2.2
   "@types/node": ^24
   get-port: ^7.2.0
+  tailwindcss: ^4.2.2
   typescript: ^5
   vite: npm:@voidzero-dev/vite-plus-core@latest
   vite-plus: latest
