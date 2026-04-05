@@ -14,10 +14,10 @@ const PORT = Number(process.env.PORT) || 3000;
 
 const app = new Hono();
 
-// Mount server API routes under /api
-app.route("/api", serverApp);
+// Mount server API routes first (最高优先级)
+app.route("/", serverApp);
 
-// Mount static files from frontend build
+// Mount static files for non-API routes
 app.use(
   "/*",
   serveStatic({
