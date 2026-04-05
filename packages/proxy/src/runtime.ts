@@ -1,14 +1,11 @@
-import { createWriteStream } from "node:fs";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import net from "node:net";
-import os from "node:os";
-import path from "node:path";
-import { spawn } from "node:child_process";
-import getPort from "get-port";
+import { Command, CommandExecutor, FileSystem, HttpClient, Path } from "@effect/platform";
+import { Effect, Exit, Scope, Stream } from "effect";
+import getPort, { clearLockedPorts } from "get-port";
 
+import { ensureProxyArtifactsEffect } from "./assets.js";
 import { DEFAULT_GATEWAY_HOST, DEFAULT_INTERNAL_HOST, DEFAULT_LOG_LEVEL } from "./constants.js";
-import { ensureProxyArtifacts } from "./assets.js";
 import { generateGatewayConfig } from "./config.js";
+import { runProxyEffect } from "./effect-runtime.js";
 import type {
   GeneratedProxyConfig,
   ProxyGatewayOptions,
@@ -17,78 +14,241 @@ import type {
 } from "./types.js";
 
 interface ManagedProcess {
-  child: ReturnType<typeof spawn>;
-  error?: Error;
+  readonly process: CommandExecutor.Process;
+  readonly scope: Scope.CloseableScope;
 }
 
-function delay(ms: number) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
+const asError = (error: unknown) => (error instanceof Error ? error : new Error(String(error)));
+
+const findAvailablePortEffect = (host = DEFAULT_INTERNAL_HOST, port?: number) =>
+  Effect.tryPromise({
+    try: () => getPort({ host, port }),
+    catch: asError,
   });
-}
 
-async function assertPortAvailable(port: number, host: string, label: string) {
-  await new Promise<void>((resolve, reject) => {
-    const server = net.createServer();
-    server.once("error", (error) => {
-      reject(
-        new Error(
-          `Port ${port} for ${label} is not available on ${host}: ${(error as Error).message}`,
-        ),
+const assertPortAvailableEffect = (port: number, host: string, label: string) =>
+  Effect.gen(function* () {
+    yield* Effect.sync(() => {
+      clearLockedPorts();
+    });
+    const resolvedPort = yield* findAvailablePortEffect(host, port);
+
+    if (resolvedPort !== port) {
+      return yield* Effect.fail(
+        new Error(`Port ${port} for ${label} is not available on ${host}.`),
       );
-    });
-    server.once("listening", () => {
-      server.close((closeError) => {
-        if (closeError) {
-          reject(closeError);
-          return;
-        }
-        resolve();
-      });
-    });
-    server.listen(port, host);
-  });
-}
-
-function wireProcessToLog(processName: string, child: ReturnType<typeof spawn>, logPath: string) {
-  const stream = createWriteStream(logPath, {
-    flags: "a",
-  });
-
-  child.stdout?.pipe(stream);
-  child.stderr?.pipe(stream);
-  child.once("close", () => {
-    stream.end(`\n[${processName}] exited\n`);
-  });
-}
-
-async function stopChildProcess(processName: string, child?: ReturnType<typeof spawn>) {
-  if (!child || child.exitCode !== null || child.signalCode !== null) {
-    return;
-  }
-
-  child.kill("SIGTERM");
-  const deadline = Date.now() + 10_000;
-
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null || child.signalCode !== null) {
-      return;
     }
-    await delay(100);
+  });
+
+const closeScopeQuietlyEffect = (scope: Scope.CloseableScope) =>
+  Scope.close(scope, Exit.void).pipe(Effect.catchAll(() => Effect.void));
+
+const wireProcessToLogEffect = (
+  processName: string,
+  managedProcess: CommandExecutor.Process,
+  logPath: string,
+  scope: Scope.CloseableScope,
+) =>
+  Effect.gen(function* () {
+    const fileSystem = yield* FileSystem.FileSystem;
+
+    const forkLogDrain = (stream: Stream.Stream<Uint8Array, unknown>) =>
+      Effect.forkScoped(
+        Stream.run(stream, fileSystem.sink(logPath, { flag: "a" })).pipe(
+          Effect.catchAll(() => Effect.void),
+        ),
+      ).pipe(Scope.extend(scope));
+
+    yield* forkLogDrain(managedProcess.stdout);
+    yield* forkLogDrain(managedProcess.stderr);
+    yield* Effect.forkScoped(
+      Effect.exit(managedProcess.exitCode).pipe(
+        Effect.flatMap(() =>
+          fileSystem.writeFileString(logPath, `\n[${processName}] exited\n`, {
+            flag: "a",
+          }),
+        ),
+        Effect.catchAll(() => Effect.void),
+      ),
+    ).pipe(Scope.extend(scope));
+  });
+
+const startManagedProcessEffect = (args: {
+  readonly command: Command.Command;
+  readonly logPath: string;
+  readonly processName: string;
+}) =>
+  Effect.gen(function* () {
+    const scope = yield* Scope.make();
+
+    const startProcess = Effect.gen(function* () {
+      const process = yield* Command.start(args.command).pipe(
+        Scope.extend(scope),
+        Effect.mapError((error) => {
+          const resolved = asError(error);
+          return new Error(
+            `${args.processName} failed to start: ${resolved.message}. See ${args.logPath}.`,
+          );
+        }),
+      );
+
+      yield* wireProcessToLogEffect(args.processName, process, args.logPath, scope);
+
+      return {
+        process,
+        scope,
+      } satisfies ManagedProcess;
+    });
+
+    return yield* startProcess.pipe(
+      Effect.catchAll((error) =>
+        closeScopeQuietlyEffect(scope).pipe(Effect.zipRight(Effect.fail(error))),
+      ),
+    );
+  });
+
+const isManagedProcessRunningEffect = (managed?: ManagedProcess) =>
+  managed
+    ? managed.process.isRunning.pipe(Effect.catchAll(() => Effect.succeed(false)))
+    : Effect.succeed(false);
+
+const stopManagedProcessEffect = (processName: string, managed?: ManagedProcess) => {
+  if (!managed) {
+    return Effect.void;
   }
 
-  child.kill("SIGKILL");
-  await delay(100);
+  const terminateEffect = managed.process.kill("SIGTERM").pipe(
+    Effect.timeoutTo({
+      duration: "10 seconds",
+      onSuccess: () => Effect.void,
+      onTimeout: () =>
+        managed.process.kill("SIGKILL").pipe(
+          Effect.timeoutFail({
+            duration: "2 seconds",
+            onTimeout: () => new Error(`${processName} did not stop cleanly.`),
+          }),
+          Effect.asVoid,
+        ),
+    }),
+    Effect.flatten,
+  );
 
-  if (child.exitCode === null && child.signalCode === null) {
-    throw new Error(`${processName} did not stop cleanly.`);
-  }
-}
+  return isManagedProcessRunningEffect(managed).pipe(
+    Effect.flatMap((running) => (running ? terminateEffect : Effect.void)),
+    Effect.catchAll((error) =>
+      isManagedProcessRunningEffect(managed).pipe(
+        Effect.flatMap((running) => (running ? Effect.fail(error) : Effect.void)),
+      ),
+    ),
+    Effect.ensuring(closeScopeQuietlyEffect(managed.scope)),
+  );
+};
+
+const waitUntilReadyEffect = (args: {
+  readonly brightstaff?: ManagedProcess;
+  readonly brightstaffLogPath: string;
+  readonly envoy?: ManagedProcess;
+  readonly envoyLogPath: string;
+  readonly gatewayUrl: string;
+  readonly workDir: string;
+}) =>
+  Effect.gen(function* () {
+    const client = yield* HttpClient.HttpClient;
+    const clock = yield* Effect.clock;
+    const deadline = (yield* clock.currentTimeMillis) + 120_000;
+
+    while (true) {
+      const now = yield* clock.currentTimeMillis;
+
+      if (now >= deadline) {
+        return yield* Effect.fail(
+          new Error(
+            `Timed out waiting for the proxy gateway to become ready. See ${args.workDir}.`,
+          ),
+        );
+      }
+
+      if (!(yield* isManagedProcessRunningEffect(args.brightstaff))) {
+        return yield* Effect.fail(
+          new Error(
+            `brightstaff exited before the gateway became ready. See ${args.brightstaffLogPath}.`,
+          ),
+        );
+      }
+
+      if (!(yield* isManagedProcessRunningEffect(args.envoy))) {
+        return yield* Effect.fail(
+          new Error(`Envoy exited before the gateway became ready. See ${args.envoyLogPath}.`),
+        );
+      }
+
+      const ready = yield* client.get(`${args.gatewayUrl}/v1/models`).pipe(
+        Effect.timeout("1 second"),
+        Effect.map((response) => response.status >= 200 && response.status < 300),
+        Effect.catchAll(() => Effect.succeed(false)),
+      );
+
+      if (ready) {
+        return;
+      }
+
+      yield* Effect.sleep("250 millis");
+    }
+  });
+
+const createProxyGatewayEffect = (options: ProxyGatewayOptions) =>
+  Effect.gen(function* () {
+    const fileSystem = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const artifacts = yield* ensureProxyArtifactsEffect(options.artifacts);
+    const generatedConfig = generateGatewayConfig({
+      ...options,
+      artifacts: {
+        ...options.artifacts,
+        llmGatewayWasmPath: artifacts.llmGatewayWasmPath,
+      },
+    });
+
+    const workDir =
+      options.workDir ??
+      (yield* fileSystem.makeTempDirectory({
+        prefix: "proxy-up-gateway-",
+      }));
+    const logsDir = path.join(workDir, "logs");
+    const planoConfigPath = path.join(workDir, "plano_config_rendered.yaml");
+    const envoyConfigPath = path.join(workDir, "envoy.yaml");
+    const brightstaffLogPath = path.join(logsDir, "brightstaff.log");
+    const envoyLogPath = path.join(logsDir, "envoy.log");
+
+    yield* fileSystem.makeDirectory(logsDir, {
+      recursive: true,
+    });
+    yield* fileSystem.writeFileString(planoConfigPath, generatedConfig.planoConfig, {
+      flag: "w",
+    });
+    yield* fileSystem.writeFileString(envoyConfigPath, generatedConfig.envoyConfig, {
+      flag: "w",
+    });
+
+    return new ProxyGateway({
+      artifacts,
+      cleanupOnStop: options.cleanupOnStop ?? false,
+      generatedConfig,
+      gatewayHost: options.gatewayHost ?? DEFAULT_GATEWAY_HOST,
+      logLevel: options.logLevel ?? DEFAULT_LOG_LEVEL,
+      paths: {
+        brightstaffLogPath,
+        envoyConfigPath,
+        envoyLogPath,
+        logsDir,
+        planoConfigPath,
+        workDir,
+      },
+    });
+  });
 
 export async function findAvailablePort(host = DEFAULT_INTERNAL_HOST) {
-  return getPort({
-    host,
-  });
+  return runProxyEffect(findAvailablePortEffect(host));
 }
 
 export class ProxyGateway {
@@ -127,187 +287,146 @@ export class ProxyGateway {
     return this.#running;
   }
 
+  #startEffect() {
+    return Effect.forEach(
+      [
+        assertPortAvailableEffect(
+          this.generatedConfig.ports.gateway,
+          this.#gatewayHost,
+          "gateway listener",
+        ),
+        assertPortAvailableEffect(
+          this.generatedConfig.ports.internal,
+          DEFAULT_INTERNAL_HOST,
+          "internal Envoy listener",
+        ),
+        assertPortAvailableEffect(
+          this.generatedConfig.ports.admin,
+          DEFAULT_INTERNAL_HOST,
+          "Envoy admin listener",
+        ),
+        assertPortAvailableEffect(
+          this.generatedConfig.ports.brightstaff,
+          DEFAULT_INTERNAL_HOST,
+          "brightstaff listener",
+        ),
+      ],
+      (effect) => effect,
+      {
+        discard: true,
+      },
+    ).pipe(
+      Effect.flatMap(() =>
+        startManagedProcessEffect({
+          command: Command.make(this.artifacts.brightstaffPath).pipe(
+            Command.env({
+              BIND_ADDRESS: `${DEFAULT_INTERNAL_HOST}:${this.generatedConfig.ports.brightstaff}`,
+              LLM_PROVIDER_ENDPOINT: this.generatedConfig.internalUrl,
+              PLANO_CONFIG_PATH_RENDERED: this.paths.planoConfigPath,
+              RUST_LOG: this.#logLevel,
+            }),
+          ),
+          logPath: this.paths.brightstaffLogPath,
+          processName: "brightstaff",
+        }).pipe(
+          Effect.tap((brightstaff) =>
+            Effect.sync(() => {
+              this.#brightstaff = brightstaff;
+            }),
+          ),
+        ),
+      ),
+      Effect.flatMap((brightstaff) =>
+        startManagedProcessEffect({
+          command: Command.make(
+            this.artifacts.envoyPath,
+            "-c",
+            this.paths.envoyConfigPath,
+            "--component-log-level",
+            `wasm:${this.#logLevel}`,
+            "--log-format",
+            "[%Y-%m-%d %T.%e][%l] %v",
+          ),
+          logPath: this.paths.envoyLogPath,
+          processName: "Envoy",
+        }).pipe(
+          Effect.tap((envoy) =>
+            Effect.sync(() => {
+              this.#envoy = envoy;
+            }),
+          ),
+          Effect.flatMap((envoy) =>
+            waitUntilReadyEffect({
+              brightstaff,
+              brightstaffLogPath: this.paths.brightstaffLogPath,
+              envoy,
+              envoyLogPath: this.paths.envoyLogPath,
+              gatewayUrl: this.gatewayUrl,
+              workDir: this.paths.workDir,
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+
+  #stopEffect(cleanup: boolean) {
+    const errors: Error[] = [];
+    const recordErrorEffect = (error: unknown) =>
+      Effect.sync(() => {
+        errors.push(asError(error));
+      });
+    const cleanupEffect = cleanup
+      ? FileSystem.FileSystem.pipe(
+          Effect.flatMap((fileSystem) =>
+            fileSystem.remove(this.paths.workDir, {
+              force: true,
+              recursive: true,
+            }),
+          ),
+        )
+      : Effect.void;
+
+    return stopManagedProcessEffect("envoy", this.#envoy).pipe(
+      Effect.catchAll(recordErrorEffect),
+      Effect.zipRight(
+        stopManagedProcessEffect("brightstaff", this.#brightstaff).pipe(
+          Effect.catchAll(recordErrorEffect),
+        ),
+      ),
+      Effect.zipRight(cleanupEffect),
+      Effect.flatMap(() => (errors.length > 0 ? Effect.fail(errors[0]!) : Effect.void)),
+    );
+  }
+
   async start() {
     if (this.#running) {
       return this;
     }
 
-    await assertPortAvailable(
-      this.generatedConfig.ports.gateway,
-      this.#gatewayHost,
-      "gateway listener",
-    );
-    await assertPortAvailable(
-      this.generatedConfig.ports.internal,
-      DEFAULT_INTERNAL_HOST,
-      "internal Envoy listener",
-    );
-    await assertPortAvailable(
-      this.generatedConfig.ports.admin,
-      DEFAULT_INTERNAL_HOST,
-      "Envoy admin listener",
-    );
-    await assertPortAvailable(
-      this.generatedConfig.ports.brightstaff,
-      DEFAULT_INTERNAL_HOST,
-      "brightstaff listener",
-    );
-
-    const brightstaff = spawn(this.artifacts.brightstaffPath, [], {
-      env: {
-        ...process.env,
-        BIND_ADDRESS: `${DEFAULT_INTERNAL_HOST}:${this.generatedConfig.ports.brightstaff}`,
-        LLM_PROVIDER_ENDPOINT: this.generatedConfig.internalUrl,
-        PLANO_CONFIG_PATH_RENDERED: this.paths.planoConfigPath,
-        RUST_LOG: this.#logLevel,
-      },
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    const brightstaffProcess: ManagedProcess = {
-      child: brightstaff,
-    };
-    brightstaff.once("error", (error) => {
-      brightstaffProcess.error = error;
-    });
-    wireProcessToLog("brightstaff", brightstaff, this.paths.brightstaffLogPath);
-    this.#brightstaff = brightstaffProcess;
-
-    const envoy = spawn(
-      this.artifacts.envoyPath,
-      [
-        "-c",
-        this.paths.envoyConfigPath,
-        "--component-log-level",
-        `wasm:${this.#logLevel}`,
-        "--log-format",
-        "[%Y-%m-%d %T.%e][%l] %v",
-      ],
-      {
-        env: {
-          ...process.env,
-        },
-        stdio: ["ignore", "pipe", "pipe"],
-      },
-    );
-    const envoyProcess: ManagedProcess = {
-      child: envoy,
-    };
-    envoy.once("error", (error) => {
-      envoyProcess.error = error;
-    });
-    wireProcessToLog("envoy", envoy, this.paths.envoyLogPath);
-    this.#envoy = envoyProcess;
-
     try {
-      await this.#waitUntilReady();
+      await runProxyEffect(this.#startEffect());
       this.#running = true;
       return this;
     } catch (error) {
-      await this.stop(false);
+      await this.stop(false).catch(() => undefined);
       throw error;
     }
   }
 
   async stop(cleanup = this.#cleanupOnStop) {
-    await stopChildProcess("envoy", this.#envoy?.child);
-    await stopChildProcess("brightstaff", this.#brightstaff?.child);
-    this.#running = false;
-
-    if (cleanup) {
-      await rm(this.paths.workDir, {
-        force: true,
-        recursive: true,
-      });
+    try {
+      await runProxyEffect(this.#stopEffect(cleanup));
+    } finally {
+      this.#brightstaff = undefined;
+      this.#envoy = undefined;
+      this.#running = false;
     }
-  }
-
-  async #waitUntilReady() {
-    const deadline = Date.now() + 120_000;
-
-    while (Date.now() < deadline) {
-      if (this.#brightstaff?.error) {
-        throw new Error(
-          `brightstaff failed to start: ${this.#brightstaff.error.message}. See ${this.paths.brightstaffLogPath}.`,
-        );
-      }
-      if (this.#envoy?.error) {
-        throw new Error(
-          `Envoy failed to start: ${this.#envoy.error.message}. See ${this.paths.envoyLogPath}.`,
-        );
-      }
-
-      if (
-        this.#brightstaff?.child.exitCode !== null ||
-        this.#brightstaff?.child.signalCode !== null
-      ) {
-        throw new Error(
-          `brightstaff exited before the gateway became ready. See ${this.paths.brightstaffLogPath}.`,
-        );
-      }
-      if (this.#envoy?.child.exitCode !== null || this.#envoy?.child.signalCode !== null) {
-        throw new Error(
-          `Envoy exited before the gateway became ready. See ${this.paths.envoyLogPath}.`,
-        );
-      }
-
-      try {
-        const response = await fetch(`${this.gatewayUrl}/v1/models`, {
-          signal: AbortSignal.timeout(1_000),
-        });
-        if (response.ok) {
-          return;
-        }
-      } catch {
-        // Keep polling until the deadline or process exit.
-      }
-
-      await delay(250);
-    }
-
-    throw new Error(
-      `Timed out waiting for the proxy gateway to become ready. See ${this.paths.workDir}.`,
-    );
   }
 }
 
 export async function createProxyGateway(options: ProxyGatewayOptions) {
-  const artifacts = await ensureProxyArtifacts(options.artifacts);
-  const generatedConfig = generateGatewayConfig({
-    ...options,
-    artifacts: {
-      ...options.artifacts,
-      llmGatewayWasmPath: artifacts.llmGatewayWasmPath,
-    },
-  });
-
-  const workDir = options.workDir ?? (await mkdtemp(path.join(os.tmpdir(), "proxy-up-gateway-")));
-  const logsDir = path.join(workDir, "logs");
-  const planoConfigPath = path.join(workDir, "plano_config_rendered.yaml");
-  const envoyConfigPath = path.join(workDir, "envoy.yaml");
-  const brightstaffLogPath = path.join(logsDir, "brightstaff.log");
-  const envoyLogPath = path.join(logsDir, "envoy.log");
-
-  await mkdir(logsDir, {
-    recursive: true,
-  });
-  await writeFile(planoConfigPath, generatedConfig.planoConfig, "utf8");
-  await writeFile(envoyConfigPath, generatedConfig.envoyConfig, "utf8");
-
-  return new ProxyGateway({
-    artifacts,
-    cleanupOnStop: options.cleanupOnStop ?? false,
-    generatedConfig,
-    gatewayHost: options.gatewayHost ?? DEFAULT_GATEWAY_HOST,
-    logLevel: options.logLevel ?? DEFAULT_LOG_LEVEL,
-    paths: {
-      brightstaffLogPath,
-      envoyConfigPath,
-      envoyLogPath,
-      logsDir,
-      planoConfigPath,
-      workDir,
-    },
-  });
+  return runProxyEffect(createProxyGatewayEffect(options));
 }
 
 export async function startProxyGateway(options: ProxyGatewayOptions) {

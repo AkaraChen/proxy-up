@@ -20,6 +20,9 @@
     "prepublishOnly": "vp run build"
   },
   "dependencies": {
+    "@effect/platform": "catalog:",
+    "@effect/platform-node": "catalog:",
+    "effect": "catalog:",
     "get-port": "catalog:",
     "yaml": "^2.8.1"
   },

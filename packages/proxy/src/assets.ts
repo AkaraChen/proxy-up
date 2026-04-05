@@ -1,11 +1,5 @@
-import { createReadStream, createWriteStream } from "node:fs";
-import { access, chmod, copyFile, mkdir, mkdtemp, rm, stat, unlink } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
-import { createGunzip } from "node:zlib";
-import { spawn } from "node:child_process";
+import { Command, CommandExecutor, FileSystem, HttpClient, Path } from "@effect/platform";
+import { Effect, Stream } from "effect";
 
 import {
   DEFAULT_ENVOY_RELEASE_BASE_URL,
@@ -13,223 +7,295 @@ import {
   DEFAULT_PLANO_RELEASE_BASE_URL,
   DEFAULT_PLANO_VERSION,
 } from "./constants.js";
+import { runProxyEffect } from "./effect-runtime.js";
+import { ProxyRuntimeInfo } from "./runtime-info.js";
 import { DEFAULT_CACHE_DIR } from "./runtime-defaults.js";
 import type { ProxyArtifactOptions, ResolvedProxyArtifacts } from "./types.js";
 
-async function ensureExists(pathname: string, label: string) {
-  try {
-    await stat(pathname);
-  } catch {
-    throw new Error(`${label} was not found at ${pathname}.`);
-  }
-}
+const asError = (error: unknown) => (error instanceof Error ? error : new Error(String(error)));
 
-function resolvePlatformSlug() {
-  if (process.platform === "linux" && process.arch === "x64") {
+const cleanupPathsEffect = (paths: ReadonlyArray<string>) =>
+  Effect.gen(function* () {
+    const fileSystem = yield* FileSystem.FileSystem;
+
+    yield* Effect.forEach(
+      paths,
+      (pathname) =>
+        fileSystem
+          .remove(pathname, {
+            force: true,
+            recursive: true,
+          })
+          .pipe(Effect.catchAll(() => Effect.void)),
+      {
+        discard: true,
+      },
+    );
+  });
+
+const ensureExistsEffect = (pathname: string, label: string) =>
+  Effect.gen(function* () {
+    const fileSystem = yield* FileSystem.FileSystem;
+
+    if (!(yield* fileSystem.exists(pathname))) {
+      return yield* Effect.fail(new Error(`${label} was not found at ${pathname}.`));
+    }
+  });
+
+const resolvePlatformSlugEffect = Effect.gen(function* () {
+  const runtimeInfo = yield* ProxyRuntimeInfo;
+
+  if (runtimeInfo.platform === "linux" && runtimeInfo.arch === "x64") {
     return "linux-amd64";
   }
-  if (process.platform === "linux" && process.arch === "arm64") {
+  if (runtimeInfo.platform === "linux" && runtimeInfo.arch === "arm64") {
     return "linux-arm64";
   }
-  if (process.platform === "darwin" && process.arch === "arm64") {
+  if (runtimeInfo.platform === "darwin" && runtimeInfo.arch === "arm64") {
     return "darwin-arm64";
   }
-  if (process.platform === "darwin" && process.arch === "x64") {
-    throw new Error(
-      "macOS x64 is not supported by Plano's published native binaries. Use Apple Silicon or Linux.",
+  if (runtimeInfo.platform === "darwin" && runtimeInfo.arch === "x64") {
+    return yield* Effect.fail(
+      new Error(
+        "macOS x64 is not supported by Plano's published native binaries. Use Apple Silicon or Linux.",
+      ),
     );
   }
 
-  throw new Error(
-    `Unsupported platform ${process.platform}/${process.arch}. Supported platforms are linux/x64, linux/arm64, and darwin/arm64.`,
+  return yield* Effect.fail(
+    new Error(
+      `Unsupported platform ${runtimeInfo.platform}/${runtimeInfo.arch}. Supported platforms are linux/x64, linux/arm64, and darwin/arm64.`,
+    ),
   );
-}
+});
 
-async function pathExists(pathname: string) {
-  try {
-    await access(pathname);
-    return true;
-  } catch {
-    return false;
-  }
-}
+const downloadToFileEffect = (url: string, destination: string) =>
+  Effect.gen(function* () {
+    const client = yield* HttpClient.HttpClient;
+    const fileSystem = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const response = yield* client.get(url);
 
-async function downloadToFile(url: string, destination: string) {
-  const response = await fetch(url);
-  if (!response.ok || !response.body) {
-    throw new Error(`Failed to download ${url}: ${response.status} ${response.statusText}`);
-  }
+    if (response.status < 200 || response.status >= 300) {
+      return yield* Effect.fail(new Error(`Failed to download ${url}: ${response.status}`));
+    }
 
-  await mkdir(path.dirname(destination), {
-    recursive: true,
-  });
-
-  const body = Readable.fromWeb(response.body as globalThis.ReadableStream<Uint8Array>);
-  await pipeline(body, createWriteStream(destination));
-}
-
-async function gunzipArchive(archivePath: string, destination: string) {
-  await pipeline(createReadStream(archivePath), createGunzip(), createWriteStream(destination));
-}
-
-async function runCommand(command: string, args: string[]) {
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn(command, args, {
-      stdio: "ignore",
+    yield* fileSystem.makeDirectory(path.dirname(destination), {
+      recursive: true,
     });
-
-    child.once("error", reject);
-    child.once("exit", (code, signal) => {
-      if (code === 0) {
-        resolve();
-        return;
+    yield* Stream.run(response.stream, fileSystem.sink(destination, { flag: "w" }));
+  }).pipe(
+    Effect.catchAll((error) => {
+      if (error instanceof Error && error.message.startsWith(`Failed to download ${url}:`)) {
+        return Effect.fail(error);
       }
 
-      reject(
-        new Error(
-          `${command} ${args.join(" ")} failed with code ${code ?? "null"} and signal ${signal ?? "null"}.`,
-        ),
-      );
-    });
-  });
-}
+      return Effect.fail(new Error(`Failed to download ${url}: ${asError(error).message}`));
+    }),
+  );
 
-async function findFile(root: string, matcher: (candidate: string) => boolean) {
-  const entries = await (
-    await import("node:fs/promises")
-  ).readdir(root, {
-    recursive: true,
-    withFileTypes: true,
-  });
+const ensureExitCodeZero = (command: Command.Command, description: string) =>
+  Command.exitCode(command).pipe(
+    Effect.flatMap((exitCode) =>
+      Number(exitCode) === 0
+        ? Effect.void
+        : Effect.fail(new Error(`${description} failed with code ${Number(exitCode)}.`)),
+    ),
+    Effect.catchAll((error) =>
+      Effect.fail(
+        error instanceof Error ? error : new Error(`${description} failed: ${String(error)}`),
+      ),
+    ),
+  );
 
-  for (const entry of entries) {
-    if (!entry.isFile()) {
-      continue;
-    }
-    const candidate = path.join(entry.parentPath, entry.name);
-    if (matcher(candidate)) {
-      return candidate;
-    }
-  }
+const gunzipArchiveEffect = (archivePath: string, destination: string) =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const fileSystem = yield* FileSystem.FileSystem;
+      const process = yield* Command.start(Command.make("gzip", "-dc", archivePath));
 
-  return undefined;
-}
+      yield* Stream.run(process.stdout, fileSystem.sink(destination, { flag: "w" }));
 
-async function ensureDownloadedGzip(url: string, destination: string, executable = false) {
-  if (await pathExists(destination)) {
-    return destination;
-  }
+      const exitCode = yield* process.exitCode;
+      if (Number(exitCode) !== 0) {
+        return yield* Effect.fail(
+          new Error(`Failed to extract ${archivePath} failed with code ${Number(exitCode)}.`),
+        );
+      }
+    }),
+  );
 
-  const tempArchive = `${destination}.download`;
-  const tempOutput = `${destination}.tmp`;
-
-  try {
-    await downloadToFile(url, tempArchive);
-    await gunzipArchive(tempArchive, tempOutput);
-    if (executable) {
-      await chmod(tempOutput, 0o755);
-    }
-    await copyFile(tempOutput, destination);
-    if (executable) {
-      await chmod(destination, 0o755);
-    }
-    return destination;
-  } finally {
-    await Promise.allSettled([unlink(tempArchive), unlink(tempOutput)]);
-  }
-}
-
-async function ensureDownloadedEnvoy(url: string, destination: string) {
-  if (await pathExists(destination)) {
-    return destination;
-  }
-
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), "proxy-up-envoy-"));
-  const archivePath = path.join(tempDir, "envoy.tar.xz");
-  const extractedPath = path.join(tempDir, "extract");
-
-  try {
-    await mkdir(extractedPath, {
+const findFileEffect = (root: string, matcher: (candidate: string) => boolean) =>
+  Effect.gen(function* () {
+    const fileSystem = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const entries = yield* fileSystem.readDirectory(root, {
       recursive: true,
     });
-    await downloadToFile(url, archivePath);
-    await runCommand("tar", ["-xf", archivePath, "-C", extractedPath]);
 
-    const envoyBinary = await findFile(
-      extractedPath,
-      (candidate) =>
-        path.basename(candidate) === "envoy" && candidate.includes(`${path.sep}bin${path.sep}`),
+    for (const entry of entries) {
+      const candidate = path.isAbsolute(entry) ? entry : path.join(root, entry);
+      const info = yield* fileSystem
+        .stat(candidate)
+        .pipe(Effect.catchAll(() => Effect.succeed(undefined)));
+
+      if (info?.type === "File" && matcher(candidate)) {
+        return candidate;
+      }
+    }
+
+    return undefined;
+  });
+
+const ensureDownloadedGzipEffect = (url: string, destination: string, executable = false) =>
+  Effect.gen(function* () {
+    const fileSystem = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+
+    if (yield* fileSystem.exists(destination)) {
+      return destination;
+    }
+
+    const tempArchive = `${destination}.download`;
+    const tempOutput = `${destination}.tmp`;
+
+    const writeArtifact = Effect.gen(function* () {
+      yield* downloadToFileEffect(url, tempArchive);
+      yield* gunzipArchiveEffect(tempArchive, tempOutput);
+      if (executable) {
+        yield* fileSystem.chmod(tempOutput, 0o755);
+      }
+      yield* fileSystem.makeDirectory(path.dirname(destination), {
+        recursive: true,
+      });
+      yield* fileSystem.copyFile(tempOutput, destination);
+      if (executable) {
+        yield* fileSystem.chmod(destination, 0o755);
+      }
+      return destination;
+    });
+
+    return yield* writeArtifact.pipe(
+      Effect.ensuring(cleanupPathsEffect([tempArchive, tempOutput])),
+    );
+  });
+
+const ensureDownloadedEnvoyEffect = (url: string, destination: string) =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const fileSystem = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+
+      if (yield* fileSystem.exists(destination)) {
+        return destination;
+      }
+
+      const tempDir = yield* fileSystem.makeTempDirectoryScoped({
+        prefix: "proxy-up-envoy-",
+      });
+      const archivePath = path.join(tempDir, "envoy.tar.xz");
+      const extractedPath = path.join(tempDir, "extract");
+
+      yield* fileSystem.makeDirectory(extractedPath, {
+        recursive: true,
+      });
+      yield* downloadToFileEffect(url, archivePath);
+      yield* ensureExitCodeZero(
+        Command.make("tar", "-xf", archivePath, "-C", extractedPath),
+        `Failed to extract ${archivePath}`,
+      );
+
+      const envoyBinary = yield* findFileEffect(extractedPath, (candidate) => {
+        const normalized = path.normalize(candidate);
+        return (
+          path.basename(normalized) === "envoy" && normalized.includes(`${path.sep}bin${path.sep}`)
+        );
+      });
+
+      if (!envoyBinary) {
+        return yield* Effect.fail(
+          new Error(`Unable to find envoy binary after extracting ${url}.`),
+        );
+      }
+
+      yield* fileSystem.makeDirectory(path.dirname(destination), {
+        recursive: true,
+      });
+      yield* fileSystem.copyFile(envoyBinary, destination);
+      yield* fileSystem.chmod(destination, 0o755);
+
+      return destination;
+    }),
+  );
+
+export const ensureProxyArtifactsEffect = (
+  options: ProxyArtifactOptions = {},
+): Effect.Effect<
+  ResolvedProxyArtifacts,
+  Error,
+  | CommandExecutor.CommandExecutor
+  | FileSystem.FileSystem
+  | HttpClient.HttpClient
+  | Path.Path
+  | ProxyRuntimeInfo
+> =>
+  Effect.gen(function* () {
+    const path = yield* Path.Path;
+    const planoVersion = options.planoVersion ?? DEFAULT_PLANO_VERSION;
+    const envoyVersion = options.envoyVersion ?? DEFAULT_ENVOY_VERSION;
+
+    if (options.brightstaffPath && options.envoyPath && options.llmGatewayWasmPath) {
+      yield* ensureExistsEffect(options.brightstaffPath, "brightstaff binary");
+      yield* ensureExistsEffect(options.envoyPath, "Envoy binary");
+      yield* ensureExistsEffect(options.llmGatewayWasmPath, "llm_gateway.wasm");
+
+      return {
+        brightstaffPath: options.brightstaffPath,
+        envoyPath: options.envoyPath,
+        envoyVersion,
+        llmGatewayWasmPath: options.llmGatewayWasmPath,
+        planoVersion,
+      };
+    }
+
+    const platformSlug = yield* resolvePlatformSlugEffect;
+    const cacheDir = options.cacheDir ?? DEFAULT_CACHE_DIR;
+    const planoDir = path.join(cacheDir, "plano", planoVersion, platformSlug);
+    const envoyDir = path.join(cacheDir, "envoy", envoyVersion, platformSlug);
+
+    const brightstaffPath = options.brightstaffPath ?? path.join(planoDir, "brightstaff");
+    const llmGatewayWasmPath =
+      options.llmGatewayWasmPath ?? path.join(planoDir, "llm_gateway.wasm");
+    const envoyPath = options.envoyPath ?? path.join(envoyDir, "envoy");
+
+    const planoReleaseBaseUrl = options.planoReleaseBaseUrl ?? DEFAULT_PLANO_RELEASE_BASE_URL;
+    const envoyReleaseBaseUrl = options.envoyReleaseBaseUrl ?? DEFAULT_ENVOY_RELEASE_BASE_URL;
+
+    yield* ensureDownloadedGzipEffect(
+      `${planoReleaseBaseUrl}/${planoVersion}/brightstaff-${platformSlug}.gz`,
+      brightstaffPath,
+      true,
+    );
+    yield* ensureDownloadedGzipEffect(
+      `${planoReleaseBaseUrl}/${planoVersion}/llm_gateway.wasm.gz`,
+      llmGatewayWasmPath,
+    );
+    yield* ensureDownloadedEnvoyEffect(
+      `${envoyReleaseBaseUrl}/${envoyVersion}/envoy-${envoyVersion}-${platformSlug}.tar.xz`,
+      envoyPath,
     );
 
-    if (!envoyBinary) {
-      throw new Error(`Unable to find envoy binary after extracting ${url}.`);
-    }
-
-    await mkdir(path.dirname(destination), {
-      recursive: true,
-    });
-    await copyFile(envoyBinary, destination);
-    await chmod(destination, 0o755);
-    return destination;
-  } finally {
-    await rm(tempDir, {
-      force: true,
-      recursive: true,
-    });
-  }
-}
+    return {
+      brightstaffPath,
+      envoyPath,
+      envoyVersion,
+      llmGatewayWasmPath,
+      planoVersion,
+    };
+  }).pipe(Effect.mapError(asError));
 
 export async function ensureProxyArtifacts(
   options: ProxyArtifactOptions = {},
 ): Promise<ResolvedProxyArtifacts> {
-  const planoVersion = options.planoVersion ?? DEFAULT_PLANO_VERSION;
-  const envoyVersion = options.envoyVersion ?? DEFAULT_ENVOY_VERSION;
-
-  if (options.brightstaffPath && options.envoyPath && options.llmGatewayWasmPath) {
-    await ensureExists(options.brightstaffPath, "brightstaff binary");
-    await ensureExists(options.envoyPath, "Envoy binary");
-    await ensureExists(options.llmGatewayWasmPath, "llm_gateway.wasm");
-
-    return {
-      brightstaffPath: options.brightstaffPath,
-      envoyPath: options.envoyPath,
-      envoyVersion,
-      llmGatewayWasmPath: options.llmGatewayWasmPath,
-      planoVersion,
-    };
-  }
-
-  const platformSlug = resolvePlatformSlug();
-  const cacheDir = options.cacheDir ?? DEFAULT_CACHE_DIR;
-  const planoDir = path.join(cacheDir, "plano", planoVersion, platformSlug);
-  const envoyDir = path.join(cacheDir, "envoy", envoyVersion, platformSlug);
-
-  const brightstaffPath = options.brightstaffPath ?? path.join(planoDir, "brightstaff");
-  const llmGatewayWasmPath = options.llmGatewayWasmPath ?? path.join(planoDir, "llm_gateway.wasm");
-  const envoyPath = options.envoyPath ?? path.join(envoyDir, "envoy");
-
-  const planoReleaseBaseUrl = options.planoReleaseBaseUrl ?? DEFAULT_PLANO_RELEASE_BASE_URL;
-  const envoyReleaseBaseUrl = options.envoyReleaseBaseUrl ?? DEFAULT_ENVOY_RELEASE_BASE_URL;
-
-  await ensureDownloadedGzip(
-    `${planoReleaseBaseUrl}/${planoVersion}/brightstaff-${platformSlug}.gz`,
-    brightstaffPath,
-    true,
-  );
-  await ensureDownloadedGzip(
-    `${planoReleaseBaseUrl}/${planoVersion}/llm_gateway.wasm.gz`,
-    llmGatewayWasmPath,
-  );
-  await ensureDownloadedEnvoy(
-    `${envoyReleaseBaseUrl}/${envoyVersion}/envoy-${envoyVersion}-${platformSlug}.tar.xz`,
-    envoyPath,
-  );
-
-  return {
-    brightstaffPath,
-    envoyPath,
-    envoyVersion,
-    llmGatewayWasmPath,
-    planoVersion,
-  };
+  return runProxyEffect(ensureProxyArtifactsEffect(options));
 }
