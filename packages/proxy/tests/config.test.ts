@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 
-import { generateGatewayConfig } from "../src";
+import { DEFAULT_CACHE_DIR, generateGatewayConfig, getDefaultTrustedCaPath } from "../src";
 
 test("generateGatewayConfig normalizes provider config into Plano's rendered shape", () => {
   const generated = generateGatewayConfig({
@@ -49,4 +49,83 @@ test("generateGatewayConfig rejects custom providers without a provider interfac
       ],
     }),
   ).toThrow(/providerInterface/i);
+});
+
+test("generateGatewayConfig rejects invalid ports and duplicate port assignments", () => {
+  expect(() =>
+    generateGatewayConfig({
+      ports: {
+        gateway: 0,
+      },
+      providers: [
+        {
+          model: "openai/gpt-4.1-mini",
+        },
+      ],
+    }),
+  ).toThrow(/Port "gateway"/i);
+
+  expect(() =>
+    generateGatewayConfig({
+      ports: {
+        admin: 12080,
+        gateway: 12080,
+      },
+      providers: [
+        {
+          model: "openai/gpt-4.1-mini",
+        },
+      ],
+    }),
+  ).toThrow(/must be unique/i);
+});
+
+test("generateGatewayConfig rejects builtin providers that require an explicit baseUrl", () => {
+  expect(() =>
+    generateGatewayConfig({
+      providers: [
+        {
+          model: "plano/mock-model",
+        },
+      ],
+    }),
+  ).toThrow(/requires baseUrl/i);
+});
+
+test("generateGatewayConfig rejects unsupported baseUrl protocols", () => {
+  expect(() =>
+    generateGatewayConfig({
+      providers: [
+        {
+          baseUrl: "ftp://127.0.0.1:4000",
+          model: "custom/mock-model",
+          providerInterface: "openai",
+        },
+      ],
+    }),
+  ).toThrow(/must use http or https/i);
+});
+
+test("generateGatewayConfig rejects multiple defaults", () => {
+  expect(() =>
+    generateGatewayConfig({
+      providers: [
+        {
+          default: true,
+          model: "openai/gpt-4.1-mini",
+        },
+        {
+          default: true,
+          model: "anthropic/claude-3.5-sonnet",
+        },
+      ],
+    }),
+  ).toThrow(/Only one provider can be marked as default/i);
+});
+
+test("runtime defaults expose a stable cache path and trusted CA path", () => {
+  expect(DEFAULT_CACHE_DIR).toContain(".cache/proxy-up/proxy");
+  expect(getDefaultTrustedCaPath()).toMatch(
+    /^\/etc\/ssl\/(cert\.pem|certs\/ca-certificates\.crt)$/,
+  );
 });
