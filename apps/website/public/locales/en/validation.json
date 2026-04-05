@@ -1,0 +1,8 @@
+{
+  "providers.minOne": "At least one provider must be configured",
+  "providers.nameUnique": "Provider name \"{{name}}\" must be unique",
+  "providers.requiresBaseUrl": "Provider \"{{provider}}\" requires baseUrl",
+  "providers.onlyOneDefault": "Only one provider can be marked as default",
+  "ports.unique": "All ports must be unique",
+  "ports.range": "Port {{port}} must be between 1 and 65535"
+}

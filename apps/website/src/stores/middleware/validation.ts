@@ -1,4 +1,5 @@
 import type { ProxyGatewayOptions } from "@proxy-up/proxy/browser";
+import i18n from "../../i18n";
 
 export interface ValidationErrors {
   providers: Map<number, string[]>;
@@ -15,7 +16,7 @@ export function validateConfig(config: ProxyGatewayOptions): ValidationErrors {
 
   // Validate providers
   if (config.providers.length === 0) {
-    errors.global.push("At least one provider must be configured");
+    errors.global.push(i18n.t("validation:providers.minOne"));
   }
 
   // Check provider name uniqueness
@@ -27,7 +28,7 @@ export function validateConfig(config: ProxyGatewayOptions): ValidationErrors {
 
     const name = provider.name ?? provider.providerInterface ?? "custom";
     if (providerNames.has(name)) {
-      providerErrors.push(`Provider name "${name}" must be unique`);
+      providerErrors.push(i18n.t("validation:providers.nameUnique", { name }));
     }
     providerNames.add(name);
 
@@ -42,7 +43,9 @@ export function validateConfig(config: ProxyGatewayOptions): ValidationErrors {
       requiresBaseUrl.includes(provider.providerInterface) &&
       !provider.baseUrl
     ) {
-      providerErrors.push(`Provider "${provider.providerInterface}" requires baseUrl`);
+      providerErrors.push(
+        i18n.t("validation:providers.requiresBaseUrl", { provider: provider.providerInterface }),
+      );
     }
 
     if (providerErrors.length > 0) {
@@ -52,7 +55,7 @@ export function validateConfig(config: ProxyGatewayOptions): ValidationErrors {
 
   // Check only one default provider
   if (defaultProviders.length > 1) {
-    errors.global.push("Only one provider can be marked as default");
+    errors.global.push(i18n.t("validation:providers.onlyOneDefault"));
   }
 
   // Validate ports
@@ -66,12 +69,12 @@ export function validateConfig(config: ProxyGatewayOptions): ValidationErrors {
 
     const uniquePorts = new Set(ports);
     if (uniquePorts.size !== ports.length) {
-      errors.ports.push("All ports must be unique");
+      errors.ports.push(i18n.t("validation:ports.unique"));
     }
 
     ports.forEach((port) => {
       if (port < 1 || port > 65535) {
-        errors.ports.push(`Port ${port} must be between 1 and 65535`);
+        errors.ports.push(i18n.t("validation:ports.range", { port }));
       }
     });
   }

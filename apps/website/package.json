@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vp dev",
     "build": "tsc && vp build",
-    "preview": "vp preview"
+    "preview": "vp preview",
+    "typegen": "i18next-cli types"
   },
   "dependencies": {
     "@heroicons/react": "catalog:",
@@ -14,9 +15,13 @@
     "@heroui/styles": "catalog:",
     "@proxy-up/proxy": "workspace:*",
     "@vitejs/plugin-react": "catalog:",
+    "i18next": "catalog:",
+    "i18next-browser-languagedetector": "catalog:",
+    "i18next-http-backend": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-grab": "catalog:",
+    "react-i18next": "catalog:",
     "wouter": "catalog:",
     "zustand": "catalog:"
   },
@@ -24,6 +29,7 @@
     "@tailwindcss/vite": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "i18next-cli": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "~5.9.3",
     "vite": "catalog:",

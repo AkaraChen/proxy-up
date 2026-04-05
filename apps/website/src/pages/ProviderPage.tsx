@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Input, ListBox, ListBoxItem, Select, Switch, TextField } from "@heroui/react";
 import type { Key } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -27,13 +28,15 @@ function ProviderItem({
   onSelect: () => void;
   onRemove: () => void;
 }) {
+  const { t } = useTranslation("provider");
+
   return (
     <div
       className={[
         "group flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer transition-colors",
         isSelected
-          ? "bg-gray-100 text-gray-900"
-          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+          ? "bg-surface text-gray-900"
+          : "text-gray-600 hover:bg-surface-tertiary hover:text-gray-900",
       ].join(" ")}
       onClick={onSelect}
       role="button"
@@ -41,9 +44,9 @@ function ProviderItem({
       onKeyDown={(e) => e.key === "Enter" && onSelect()}
     >
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium truncate">{name || "Unnamed Provider"}</p>
+        <p className="text-sm font-medium truncate">{name || t("item.unnamed")}</p>
         <p className="text-xs text-gray-400 truncate mt-0.5">
-          {model ? `1 model · ${model}` : "No model configured"}
+          {model ? `1 model · ${model}` : t("item.noModel")}
         </p>
       </div>
       <button
@@ -53,7 +56,7 @@ function ProviderItem({
           e.stopPropagation();
           onRemove();
         }}
-        aria-label="Remove provider"
+        aria-label={t("aria.removeProvider")}
       >
         <TrashIcon className="size-3.5" aria-hidden="true" />
       </button>
@@ -62,6 +65,7 @@ function ProviderItem({
 }
 
 function ProviderSidebar() {
+  const { t } = useTranslation("provider");
   const { config, addProvider, removeProvider } = useProxyConfigStore();
   const { selectedProviderIndex, setSelectedProvider } = useProxyUIStore();
 
@@ -70,7 +74,7 @@ function ProviderSidebar() {
     addProvider({
       default: newIndex === 0,
       model: "",
-      name: `Provider ${newIndex + 1}`,
+      name: t("newProvider", { index: newIndex + 1, defaultValue: `Provider ${newIndex + 1}` }),
     });
     setSelectedProvider(newIndex);
   };
@@ -85,16 +89,16 @@ function ProviderSidebar() {
   };
 
   return (
-    <aside className="w-64 shrink-0 border-r border-gray-200 bg-white/60 backdrop-blur-sm flex flex-col">
+    <aside className="w-64 shrink-0 border-r border-gray-200 bg-secondary flex flex-col">
       <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-          Providers
+          {t("sidebar.heading")}
         </span>
         <button
           type="button"
           onClick={handleAdd}
-          className="text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded p-1 transition-colors"
-          aria-label="Add provider"
+          className="text-gray-500 hover:text-gray-900 hover:bg-surface-tertiary rounded p-1 transition-colors"
+          aria-label={t("aria.addProvider")}
         >
           <PlusIcon className="size-4" aria-hidden="true" />
         </button>
@@ -102,15 +106,16 @@ function ProviderSidebar() {
       <div className="flex-1 overflow-auto py-2 px-2">
         {config.providers.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-8 px-3 leading-relaxed">
-            No providers yet.
-            <br />
-            Click + to add one.
+            {t("sidebar.empty")}
           </p>
         ) : (
           config.providers.map((provider, index) => (
             <ProviderItem
               key={index}
-              name={provider.name ?? `Provider ${index + 1}`}
+              name={
+                provider.name ??
+                t("newProvider", { index: index + 1, defaultValue: `Provider ${index + 1}` })
+              }
               model={provider.model}
               isSelected={selectedProviderIndex === index}
               onSelect={() => setSelectedProvider(index)}
@@ -124,6 +129,7 @@ function ProviderSidebar() {
 }
 
 function ProviderPanel() {
+  const { t } = useTranslation("provider");
   const { config, updateProvider } = useProxyConfigStore();
   const { selectedProviderIndex } = useProxyUIStore();
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -133,8 +139,8 @@ function ProviderPanel() {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-400">
         <div className="text-center">
-          <p className="text-sm">Select a provider to configure it,</p>
-          <p className="text-sm">or click + to add a new one.</p>
+          <p className="text-sm">{t("panel.unselected.primary")}</p>
+          <p className="text-sm">{t("panel.unselected.secondary")}</p>
         </div>
       </div>
     );
@@ -164,21 +170,19 @@ function ProviderPanel() {
     <div className="flex-1 overflow-auto">
       <div className="p-6 max-w-2xl">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">
-          {provider.name || "Unnamed Provider"}
+          {provider.name || t("item.unnamed")}
         </h1>
-        <p className="text-gray-500 text-sm mb-6">
-          {meta?.note ?? "Configure the settings for this provider."}
-        </p>
+        <p className="text-gray-500 text-sm mb-6">{meta?.note ?? t("panel.defaultDescription")}</p>
 
-        <SectionHeading>Basic</SectionHeading>
-        <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white px-4">
-          <SettingRow label="Name" description="A display name for this provider.">
+        <SectionHeading>{t("basic.heading")}</SectionHeading>
+        <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-surface px-4">
+          <SettingRow label={t("basic.name.label")} description={t("basic.name.description")}>
             <TextField value={provider.name ?? ""} onChange={(v) => update({ name: v })}>
-              <Input className="w-44" placeholder="e.g. My OpenAI" />
+              <Input className="w-44" placeholder={t("basic.name.placeholder")} />
             </TextField>
           </SettingRow>
 
-          <SettingRow label="Type" description="The provider interface to use for this entry.">
+          <SettingRow label={t("basic.type.label")} description={t("basic.type.description")}>
             <Select
               selectedKey={provider.providerInterface ?? null}
               onSelectionChange={handleTypeChange}
@@ -199,10 +203,7 @@ function ProviderPanel() {
             </Select>
           </SettingRow>
 
-          <SettingRow
-            label="API Key"
-            description="The secret key used to authenticate with the provider."
-          >
+          <SettingRow label={t("basic.apiKey.label")} description={t("basic.apiKey.description")}>
             <div className="flex items-center gap-1">
               <TextField
                 value={provider.apiKey ?? ""}
@@ -211,7 +212,7 @@ function ProviderPanel() {
                 <Input
                   className="w-44"
                   type={showApiKey ? "text" : "password"}
-                  placeholder="sk-…"
+                  placeholder={t("basic.apiKey.placeholder")}
                   autoComplete="off"
                 />
               </TextField>
@@ -219,7 +220,7 @@ function ProviderPanel() {
                 type="button"
                 onClick={() => setShowApiKey(!showApiKey)}
                 className="text-gray-400 hover:text-gray-700 p-1 transition-colors"
-                aria-label={showApiKey ? "Hide API key" : "Show API key"}
+                aria-label={showApiKey ? t("aria.hideApiKey") : t("aria.showApiKey")}
               >
                 {showApiKey ? (
                   <EyeSlashIcon className="size-4" aria-hidden="true" />
@@ -231,24 +232,30 @@ function ProviderPanel() {
           </SettingRow>
 
           <SettingRow
-            label="Base URL"
+            label={t("basic.baseUrl.label")}
             description={
               meta?.requiresBaseUrl
-                ? "Required for this provider type."
-                : "Override the built-in endpoint. Leave empty to use the default."
+                ? t("basic.baseUrl.description.required")
+                : t("basic.baseUrl.description.optional")
             }
           >
             <TextField
               value={provider.baseUrl ?? ""}
               onChange={(v) => update({ baseUrl: v || undefined })}
             >
-              <Input className="w-52" placeholder={meta?.baseUrlExample ?? "https://…"} />
+              <Input
+                className="w-52"
+                placeholder={meta?.baseUrlExample ?? t("basic.baseUrl.placeholder")}
+              />
             </TextField>
           </SettingRow>
 
-          <SettingRow label="Model" description="The model identifier to route requests to.">
+          <SettingRow label={t("basic.model.label")} description={t("basic.model.description")}>
             <TextField value={provider.model} onChange={(v) => update({ model: v })}>
-              <Input className="w-44" placeholder={meta?.modelExample ?? "model-id"} />
+              <Input
+                className="w-44"
+                placeholder={meta?.modelExample ?? t("basic.model.placeholder")}
+              />
             </TextField>
           </SettingRow>
         </div>
@@ -263,14 +270,14 @@ function ProviderPanel() {
           ) : (
             <ChevronRightIcon className="size-3.5" aria-hidden="true" />
           )}
-          Advanced
+          {t("advanced.heading")}
         </button>
 
         {showAdvanced && (
           <div className="mt-1 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white px-4">
             <SettingRow
-              label="Default Provider"
-              description="Mark this provider as the default for all gateway requests."
+              label={t("advanced.defaultProvider.label")}
+              description={t("advanced.defaultProvider.description")}
             >
               <Switch
                 isSelected={provider.default ?? false}
@@ -283,8 +290,8 @@ function ProviderPanel() {
             </SettingRow>
 
             <SettingRow
-              label="Passthrough Auth"
-              description="Forward the client's Authorization header directly to the upstream."
+              label={t("advanced.passthroughAuth.label")}
+              description={t("advanced.passthroughAuth.description")}
             >
               <Switch
                 isSelected={provider.passthroughAuth ?? false}
@@ -304,7 +311,7 @@ function ProviderPanel() {
 
 function ProviderPage() {
   return (
-    <div className="flex h-full">
+    <div className="flex h-full bg-secondary">
       <ProviderSidebar />
       <ProviderPanel />
     </div>

@@ -13,9 +13,14 @@ catalog:
   "@types/react-dom": ^19.2.3
   "@vitejs/plugin-react": ^6.0.1
   get-port: ^7.2.0
+  i18next: ^26.0.3
+  i18next-browser-languagedetector: ^8.2.1
+  i18next-cli: ^1.51.6
+  i18next-http-backend: ^3.0.4
   react: ^19.2.4
   react-dom: ^19.2.4
   react-grab: ^0.1.29
+  react-i18next: ^17.0.2
   tailwindcss: ^4.2.2
   typescript: ^5
   vite: npm:@voidzero-dev/vite-plus-core@latest

@@ -1,0 +1,8 @@
+{
+  "providers.minOne": "必须至少配置一个提供商",
+  "providers.nameUnique": "提供商名称 \"{{name}}\" 必须唯一",
+  "providers.requiresBaseUrl": "提供商 \"{{provider}}\" 需要 baseUrl",
+  "providers.onlyOneDefault": "只能标记一个提供商为默认",
+  "ports.unique": "所有端口必须唯一",
+  "ports.range": "端口 {{port}} 必须在 1 到 65535 之间"
+}

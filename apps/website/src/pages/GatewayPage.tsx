@@ -1,5 +1,6 @@
 import { Input, ListBox, ListBoxItem, Select, Switch, TextField } from "@heroui/react";
 import type { Key } from "react";
+import { useTranslation } from "react-i18next";
 import { useProxyConfigStore } from "../stores";
 import { LOG_LEVEL_OPTIONS } from "../components/config/data";
 import { DEFAULT_GATEWAY_HOST, DEFAULT_GATEWAY_PORT } from "@proxy-up/proxy/browser";
@@ -7,6 +8,7 @@ import type { ProxyLogLevel } from "@proxy-up/proxy/browser";
 import { SectionHeading, SettingRow } from "../components/common";
 
 function GatewayPage() {
+  const { t } = useTranslation("gateway");
   const {
     config,
     updateGatewayHost,
@@ -22,21 +24,25 @@ function GatewayPage() {
   const cleanupOnStop = config.cleanupOnStop ?? true;
   const workDir = config.workDir ?? "";
 
-  return (
-    <div className="p-6 max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Gateway</h1>
-      <p className="text-gray-500 text-sm mb-6">
-        Configure the core settings for your proxy gateway.
-      </p>
+  const logLevelOptions = LOG_LEVEL_OPTIONS.map((opt) => ({
+    ...opt,
+    label: t(`logLevels.${opt.value}.label`),
+    description: t(`logLevels.${opt.value}.description`),
+  }));
 
-      <SectionHeading>Network</SectionHeading>
-      <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white px-4">
-        <SettingRow label="Host" description="The address the gateway binds to.">
+  return (
+    <div className="p-6 max-w-2xl bg-secondary min-h-full">
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">{t("title")}</h1>
+      <p className="text-gray-500 text-sm mb-6">{t("description")}</p>
+
+      <SectionHeading>{t("network.heading")}</SectionHeading>
+      <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-surface px-4">
+        <SettingRow label={t("network.host.label")} description={t("network.host.description")}>
           <TextField value={gatewayHost} onChange={(v) => updateGatewayHost(v)}>
             <Input className="w-44" placeholder={DEFAULT_GATEWAY_HOST} />
           </TextField>
         </SettingRow>
-        <SettingRow label="Port" description="The port the gateway listens on.">
+        <SettingRow label={t("network.port.label")} description={t("network.port.description")}>
           <TextField
             value={String(gatewayPort)}
             onChange={(v) => {
@@ -57,9 +63,9 @@ function GatewayPage() {
         </SettingRow>
       </div>
 
-      <SectionHeading>Logging</SectionHeading>
-      <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white px-4">
-        <SettingRow label="Log Level" description="Controls the verbosity of gateway output.">
+      <SectionHeading>{t("logging.heading")}</SectionHeading>
+      <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-surface px-4">
+        <SettingRow label={t("logging.level.label")} description={t("logging.level.description")}>
           <Select
             selectedKey={logLevel}
             onSelectionChange={(key: Key | null) =>
@@ -72,7 +78,7 @@ function GatewayPage() {
             </Select.Trigger>
             <Select.Popover>
               <ListBox>
-                {LOG_LEVEL_OPTIONS.map((opt) => (
+                {logLevelOptions.map((opt) => (
                   <ListBoxItem id={opt.value} key={opt.value}>
                     {opt.label}
                   </ListBoxItem>
@@ -83,11 +89,11 @@ function GatewayPage() {
         </SettingRow>
       </div>
 
-      <SectionHeading>Behavior</SectionHeading>
-      <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white px-4">
+      <SectionHeading>{t("behavior.heading")}</SectionHeading>
+      <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-surface px-4">
         <SettingRow
-          label="Cleanup on Stop"
-          description="Remove the working directory when the gateway stops."
+          label={t("behavior.cleanup.label")}
+          description={t("behavior.cleanup.description")}
         >
           <Switch isSelected={cleanupOnStop} onChange={updateCleanupOnStop}>
             <Switch.Control>
@@ -96,14 +102,14 @@ function GatewayPage() {
           </Switch>
         </SettingRow>
         <SettingRow
-          label="Work Directory"
-          description="Directory used for runtime files. Leave empty to use a temporary directory."
+          label={t("behavior.workDir.label")}
+          description={t("behavior.workDir.description")}
         >
           <TextField
             value={workDir}
             onChange={(v) => updateWorkDir(v.trim() === "" ? undefined : v)}
           >
-            <Input className="w-52" placeholder="(temporary)" />
+            <Input className="w-52" placeholder={t("behavior.workDir.placeholder")} />
           </TextField>
         </SettingRow>
       </div>
