@@ -19,7 +19,7 @@ function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <header className="flex items-center justify-between border-b border-gray-200 bg-secondary px-6 py-4">
+      <header className="flex items-center justify-between border-b border-gray-200 bg-secondary px-4 py-2.5">
         <button
           type="button"
           onClick={() => navigate("/")}
@@ -44,7 +44,7 @@ function AppLayout({ children }: AppLayoutProps) {
       </header>
 
       <div className="flex flex-1 bg-background">
-        <nav className="w-52 shrink-0 border-r border-gray-200 bg-secondary py-4 px-3">
+        <nav className="w-52 shrink-0 bg-secondary py-4 px-3">
           <ul className="flex flex-col gap-1">
             {NAV_ITEMS.map((item) => {
               const isActive = location === item.href;

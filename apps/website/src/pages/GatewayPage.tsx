@@ -5,7 +5,7 @@ import { useProxyConfigStore } from "../stores";
 import { LOG_LEVEL_OPTIONS } from "../components/config/data";
 import { DEFAULT_GATEWAY_HOST, DEFAULT_GATEWAY_PORT } from "@proxy-up/proxy/browser";
 import type { ProxyLogLevel } from "@proxy-up/proxy/browser";
-import { SectionHeading, SettingRow } from "../components/common";
+import { SectionHeading, SettingsContainer, SettingRow } from "../components/common";
 
 function GatewayPage() {
   const { t } = useTranslation("gateway");
@@ -36,7 +36,7 @@ function GatewayPage() {
       <p className="text-gray-500 text-sm mb-6">{t("description")}</p>
 
       <SectionHeading>{t("network.heading")}</SectionHeading>
-      <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-surface px-4">
+      <SettingsContainer>
         <SettingRow label={t("network.host.label")} description={t("network.host.description")}>
           <TextField value={gatewayHost} onChange={(v) => updateGatewayHost(v)}>
             <Input className="w-44" placeholder={DEFAULT_GATEWAY_HOST} />
@@ -61,10 +61,10 @@ function GatewayPage() {
             />
           </TextField>
         </SettingRow>
-      </div>
+      </SettingsContainer>
 
       <SectionHeading>{t("logging.heading")}</SectionHeading>
-      <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-surface px-4">
+      <SettingsContainer>
         <SettingRow label={t("logging.level.label")} description={t("logging.level.description")}>
           <Select
             selectedKey={logLevel}
@@ -87,10 +87,10 @@ function GatewayPage() {
             </Select.Popover>
           </Select>
         </SettingRow>
-      </div>
+      </SettingsContainer>
 
       <SectionHeading>{t("behavior.heading")}</SectionHeading>
-      <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-surface px-4">
+      <SettingsContainer>
         <SettingRow
           label={t("behavior.cleanup.label")}
           description={t("behavior.cleanup.description")}
@@ -112,7 +112,7 @@ function GatewayPage() {
             <Input className="w-52" placeholder={t("behavior.workDir.placeholder")} />
           </TextField>
         </SettingRow>
-      </div>
+      </SettingsContainer>
     </div>
   );
 }

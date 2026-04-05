@@ -8,6 +8,10 @@ export function SectionHeading({ children }: { children: ReactNode }) {
   );
 }
 
+export function SettingsContainer({ children }: { children: ReactNode }) {
+  return <div className="divide-y divide-gray-100 rounded-xl bg-surface px-4">{children}</div>;
+}
+
 export function SettingRow({
   label,
   description,
