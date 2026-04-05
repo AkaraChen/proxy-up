@@ -19,6 +19,7 @@
     "prepublishOnly": "vp run build"
   },
   "dependencies": {
+    "@proxy-up/proxy": "workspace:*",
     "hono": "^4.8.4"
   },
   "devDependencies": {

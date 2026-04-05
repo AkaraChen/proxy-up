@@ -212,6 +212,9 @@ importers:
 
   packages/server:
     dependencies:
+      '@proxy-up/proxy':
+        specifier: workspace:*
+        version: link:../proxy
       hono:
         specifier: ^4.8.4
         version: 4.12.10
