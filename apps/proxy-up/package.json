@@ -1,0 +1,35 @@
+{
+  "name": "proxy-up",
+  "version": "0.0.0",
+  "private": true,
+  "bin": {
+    "proxy-up": "./dist/cli.mjs"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./dist/cli.mjs",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "pnpm run build:frontend && pnpm run build:cli",
+    "build:frontend": "vp run website#build && node scripts/copy-frontend.js",
+    "build:cli": "vp pack",
+    "setup": "tsx scripts/setup.ts",
+    "download-artifacts": "tsx scripts/download-artifacts.ts",
+    "start": "node dist/cli.mjs"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.4",
+    "@proxy-up/proxy": "workspace:*",
+    "@proxy-up/server": "workspace:*",
+    "hono": "^4.8.4",
+    "open": "^10.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsx": "^4.19.3",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

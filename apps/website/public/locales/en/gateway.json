@@ -24,5 +24,12 @@
   "logLevels.warn.label": "Warn",
   "logLevels.warn.description": "Only suspicious conditions and warnings.",
   "logLevels.error.label": "Error",
-  "logLevels.error.description": "Only failures that need immediate action."
+  "logLevels.error.description": "Only failures that need immediate action.",
+  "controls.save": "Save",
+  "controls.start": "Start",
+  "controls.stop": "Stop",
+  "controls.restart": "Restart",
+  "status.running": "Running",
+  "status.stopped": "Stopped",
+  "status.starting": "Starting..."
 }

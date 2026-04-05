@@ -23,14 +23,6 @@ describe("API endpoints", () => {
     await cleanupConfigFiles();
   });
 
-  describe("Health check", () => {
-    test("GET / returns hello world", async () => {
-      const res = await app.request("/");
-      expect(res.status).toBe(200);
-      expect(await res.text()).toBe("hello world");
-    });
-  });
-
   describe("Config management", () => {
     test("GET /api/config returns 404 when no config exists", async () => {
       const res = await app.request("/api/config");

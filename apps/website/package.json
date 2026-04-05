@@ -14,8 +14,10 @@
     "@heroui/react": "catalog:",
     "@heroui/styles": "catalog:",
     "@proxy-up/proxy": "workspace:*",
+    "@proxy-up/server": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "hono": "catalog:",
     "i18next": "catalog:",
     "i18next-browser-languagedetector": "catalog:",
     "i18next-http-backend": "catalog:",
@@ -29,6 +31,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "i18next-cli": "catalog:",

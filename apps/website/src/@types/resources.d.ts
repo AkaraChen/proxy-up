@@ -16,6 +16,10 @@ interface Resources {
     "behavior.workDir.description": "Directory used for runtime files. Leave empty to use a temporary directory.";
     "behavior.workDir.label": "Work Directory";
     "behavior.workDir.placeholder": "(temporary)";
+    "controls.restart": "Restart";
+    "controls.save": "Save";
+    "controls.start": "Start";
+    "controls.stop": "Stop";
     description: "Configure the core settings for your proxy gateway.";
     "logLevels.debug.description": "Operational debugging with request-level detail.";
     "logLevels.debug.label": "Debug";
@@ -35,6 +39,9 @@ interface Resources {
     "network.host.label": "Host";
     "network.port.description": "The port the gateway listens on.";
     "network.port.label": "Port";
+    "status.running": "Running";
+    "status.starting": "Starting...";
+    "status.stopped": "Stopped";
     title: "Gateway";
   };
   navigation: {

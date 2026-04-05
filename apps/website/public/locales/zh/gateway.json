@@ -24,5 +24,12 @@
   "logLevels.warn.label": "警告",
   "logLevels.warn.description": "仅可疑情况和警告。",
   "logLevels.error.label": "错误",
-  "logLevels.error.description": "仅需要立即处理的失败。"
+  "logLevels.error.description": "仅需要立即处理的失败。",
+  "controls.save": "保存",
+  "controls.start": "启动",
+  "controls.stop": "停止",
+  "controls.restart": "重启",
+  "status.running": "运行中",
+  "status.stopped": "已停止",
+  "status.starting": "启动中..."
 }

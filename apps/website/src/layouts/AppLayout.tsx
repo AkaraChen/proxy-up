@@ -3,6 +3,9 @@ import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import type { ReactNode } from "react";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
+import { GatewayStatusIcon } from "../components/GatewayStatusIcon";
+import { GatewayControls } from "../components/GatewayControls";
+import { ErrorMessage } from "../components/ErrorMessage";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -28,6 +31,8 @@ function AppLayout({ children }: AppLayoutProps) {
           {t("appTitle")}
         </button>
         <div className="flex items-center gap-4">
+          <GatewayStatusIcon />
+          <GatewayControls />
           <LanguageSwitcher />
           <Link
             href="https://github.com/AkaraChen/proxy-up"
@@ -70,6 +75,8 @@ function AppLayout({ children }: AppLayoutProps) {
 
         <main className="flex-1 overflow-auto">{children}</main>
       </div>
+
+      <ErrorMessage />
     </div>
   );
 }
