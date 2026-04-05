@@ -10,7 +10,21 @@ export const queryKeys = {
   status: ["status"] as const,
 };
 
-// Hook: Initialize config from server
+// Hook: Fetch config with suspense
+export function useConfig() {
+  return useQuery({
+    queryKey: queryKeys.config,
+    queryFn: async () => {
+      const response = await apiClient.api.config.$get();
+      if (!response.ok) {
+        throw new Error("Failed to fetch config");
+      }
+      return response.json();
+    },
+  });
+}
+
+// Hook: Initialize config from server (mutation version for explicit initialization)
 export function useInitConfig() {
   const {
     updateProviders,

@@ -1,5 +1,4 @@
-import { use } from "react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useInitConfig, useInitStatus } from "../api/hooks";
 
 interface AppInitializerProps {
@@ -10,9 +9,25 @@ export function AppInitializer({ children }: AppInitializerProps) {
   const initConfig = useInitConfig();
   const initStatus = useInitStatus();
 
-  // Use React's `use()` to await mutations - elegant pattern
-  use(initConfig.mutateAsync());
-  use(initStatus.mutateAsync());
+  useEffect(() => {
+    // Only run once on mount
+    initConfig.mutate();
+    initStatus.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Wait for initialization to complete
+  if (initConfig.isPending || initStatus.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (initConfig.isError) {
+    return <div>Error loading config: {initConfig.error?.message}</div>;
+  }
+
+  if (initStatus.isError) {
+    return <div>Error loading status: {initStatus.error?.message}</div>;
+  }
 
   return <>{children}</>;
 }
