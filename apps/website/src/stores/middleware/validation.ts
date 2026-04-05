@@ -1,15 +1,15 @@
-import type { ProxyGatewayOptions } from "@proxy-up/proxy/browser";
+import type { UIConfig } from "../types";
 import i18n from "../../i18n";
 
 export interface ValidationErrors {
-  providers: Map<number, string[]>;
+  providers: Map<string, string[]>;
   ports: string[];
   global: string[];
 }
 
-export function validateConfig(config: ProxyGatewayOptions): ValidationErrors {
+export function validateConfig(config: UIConfig): ValidationErrors {
   const errors: ValidationErrors = {
-    providers: new Map<number, string[]>(),
+    providers: new Map<string, string[]>(),
     ports: [],
     global: [],
   };
@@ -21,19 +21,25 @@ export function validateConfig(config: ProxyGatewayOptions): ValidationErrors {
 
   // Check provider name uniqueness
   const providerNames = new Set<string>();
-  const defaultProviders: number[] = [];
+  const defaultModels: string[] = []; // Track providerId that have defaultModel set
 
-  config.providers.forEach((provider, index) => {
+  config.providers.forEach((provider) => {
     const providerErrors: string[] = [];
 
-    const name = provider.name ?? provider.providerInterface ?? "custom";
-    if (providerNames.has(name)) {
-      providerErrors.push(i18n.t("validation:providers.nameUnique", { name }));
+    // Check name uniqueness
+    if (providerNames.has(provider.name)) {
+      providerErrors.push(i18n.t("validation:providers.nameUnique", { name: provider.name }));
     }
-    providerNames.add(name);
+    providerNames.add(provider.name);
 
-    if (provider.default) {
-      defaultProviders.push(index);
+    // Track default models
+    if (provider.defaultModel !== undefined) {
+      defaultModels.push(provider.id);
+    }
+
+    // Check at least one model
+    if (provider.models.length === 0) {
+      providerErrors.push(i18n.t("validation:providers.minOneModel"));
     }
 
     // Check required baseUrl for certain providers
@@ -49,12 +55,12 @@ export function validateConfig(config: ProxyGatewayOptions): ValidationErrors {
     }
 
     if (providerErrors.length > 0) {
-      errors.providers.set(index, providerErrors);
+      errors.providers.set(provider.id, providerErrors);
     }
   });
 
-  // Check only one default provider
-  if (defaultProviders.length > 1) {
+  // Check only one default model across all providers
+  if (defaultModels.length > 1) {
     errors.global.push(i18n.t("validation:providers.onlyOneDefault"));
   }
 

@@ -9,26 +9,31 @@ import {
   EyeSlashIcon,
   PlusIcon,
   TrashIcon,
+  PencilIcon,
+  StarIcon,
 } from "@heroicons/react/24/outline";
 import { useProxyConfigStore, useProxyUIStore } from "../stores";
 import { PROVIDER_LIBRARY } from "../components/config/data";
-import type { ProxyProviderInterface, ProxyProviderOptions } from "@proxy-up/proxy/browser";
-import { SectionHeading, SettingRow } from "../components/common";
+import type { ProxyProviderInterface } from "@proxy-up/proxy/browser";
+import type { UIProvider } from "../stores/types";
+import { generateUUID } from "../stores/types";
+import { SectionHeading, SettingsContainer, SettingRow } from "../components/common";
 
 function ProviderItem({
-  name,
-  model,
+  provider,
   isSelected,
   onSelect,
   onRemove,
 }: {
-  name: string;
-  model: string;
+  provider: UIProvider;
   isSelected: boolean;
   onSelect: () => void;
   onRemove: () => void;
 }) {
   const { t } = useTranslation("provider");
+
+  const modelCount = provider.models.length;
+  const firstModel = provider.models[0];
 
   return (
     <div
@@ -44,9 +49,13 @@ function ProviderItem({
       onKeyDown={(e) => e.key === "Enter" && onSelect()}
     >
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium truncate">{name || t("item.unnamed")}</p>
+        <p className="text-sm font-medium truncate">{provider.name || t("item.unnamed")}</p>
         <p className="text-xs text-gray-400 truncate mt-0.5">
-          {model ? `1 model · ${model}` : t("item.noModel")}
+          {modelCount === 0
+            ? t("item.noModel")
+            : modelCount === 1
+              ? `1 model · ${firstModel}`
+              : `${modelCount} models`}
         </p>
       </div>
       <button
@@ -67,29 +76,39 @@ function ProviderItem({
 function ProviderSidebar() {
   const { t } = useTranslation("provider");
   const { config, addProvider, removeProvider } = useProxyConfigStore();
-  const { selectedProviderIndex, setSelectedProvider } = useProxyUIStore();
+  const { selectedProviderId, setSelectedProvider } = useProxyUIStore();
 
   const handleAdd = () => {
     const newIndex = config.providers.length;
-    addProvider({
-      default: newIndex === 0,
-      model: "",
+    const newProvider: UIProvider = {
+      id: generateUUID(),
       name: t("newProvider", { index: newIndex + 1, defaultValue: `Provider ${newIndex + 1}` }),
-    });
-    setSelectedProvider(newIndex);
+      models: [""],
+      defaultModel: newIndex === 0 ? 0 : undefined, // 第一个 provider 的第一个 model 自动设为 default
+    };
+    addProvider(newProvider);
+    setSelectedProvider(newProvider.id);
   };
 
-  const handleRemove = (index: number) => {
-    removeProvider(index);
-    if (selectedProviderIndex === index) {
-      setSelectedProvider(index > 0 ? index - 1 : null);
-    } else if (selectedProviderIndex !== null && selectedProviderIndex > index) {
-      setSelectedProvider(selectedProviderIndex - 1);
+  const handleRemove = (providerId: string) => {
+    const index = config.providers.findIndex((p) => p.id === providerId);
+    removeProvider(providerId);
+
+    // 自动调整选中状态
+    if (selectedProviderId === providerId) {
+      const remaining = config.providers.filter((p) => p.id !== providerId);
+      if (remaining.length > 0) {
+        // 选中同一个索引位置的 provider（或前一个）
+        const newIndex = Math.min(index, remaining.length - 1);
+        setSelectedProvider(remaining[newIndex].id);
+      } else {
+        setSelectedProvider(null);
+      }
     }
   };
 
   return (
-    <aside className="w-64 shrink-0 border-r border-gray-200 bg-secondary flex flex-col">
+    <aside className="w-64 shrink-0 bg-secondary flex flex-col">
       <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-widest text-gray-400">
           {t("sidebar.heading")}
@@ -109,17 +128,13 @@ function ProviderSidebar() {
             {t("sidebar.empty")}
           </p>
         ) : (
-          config.providers.map((provider, index) => (
+          config.providers.map((provider) => (
             <ProviderItem
-              key={index}
-              name={
-                provider.name ??
-                t("newProvider", { index: index + 1, defaultValue: `Provider ${index + 1}` })
-              }
-              model={provider.model}
-              isSelected={selectedProviderIndex === index}
-              onSelect={() => setSelectedProvider(index)}
-              onRemove={() => handleRemove(index)}
+              key={provider.id}
+              provider={provider}
+              isSelected={selectedProviderId === provider.id}
+              onSelect={() => setSelectedProvider(provider.id)}
+              onRemove={() => handleRemove(provider.id)}
             />
           ))
         )}
@@ -128,14 +143,116 @@ function ProviderSidebar() {
   );
 }
 
+function ModelList({ provider }: { provider: UIProvider }) {
+  const { t } = useTranslation("provider");
+  const { addModel, removeModel, updateModel, setDefaultModel } = useProxyConfigStore();
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+  const handleAddModel = () => {
+    addModel(provider.id, "");
+    // 自动进入编辑状态
+    const newIndex = provider.models.length;
+    setEditingIndex(newIndex);
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+          {t("models.heading")}
+        </h3>
+        <button
+          type="button"
+          onClick={handleAddModel}
+          className="text-gray-500 hover:text-gray-900 hover:bg-surface-tertiary rounded p-1 transition-colors flex items-center gap-1"
+          aria-label={t("aria.addModel")}
+        >
+          <PlusIcon className="size-3.5" aria-hidden="true" />
+          <span className="text-xs">{t("models.add")}</span>
+        </button>
+      </div>
+
+      <div className="bg-surface rounded-lg border border-gray-100">
+        {provider.models.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-4">{t("models.empty")}</p>
+        ) : (
+          provider.models.map((model, index) => {
+            const isDefault = provider.defaultModel === index;
+            const isEditing = editingIndex === index;
+
+            return (
+              <div
+                key={index}
+                className="flex items-center gap-2 px-3 py-2 border-b border-gray-50 last:border-b-0"
+              >
+                {/* Default star icon */}
+                <button
+                  type="button"
+                  onClick={() => setDefaultModel(provider.id, isDefault ? undefined : index)}
+                  className={[
+                    "shrink-0 transition-colors",
+                    isDefault
+                      ? "text-yellow-500 hover:text-yellow-600"
+                      : "text-gray-300 hover:text-yellow-400",
+                  ].join(" ")}
+                  aria-label={isDefault ? t("aria.unsetAsDefault") : t("aria.setAsDefault")}
+                >
+                  <StarIcon className="size-4" aria-hidden="true" />
+                </button>
+
+                {/* Model input or display */}
+                {isEditing ? (
+                  <TextField
+                    value={model}
+                    onChange={(v) => updateModel(provider.id, index, v)}
+                    onBlur={() => setEditingIndex(null)}
+                  >
+                    <Input className="flex-1" placeholder={t("models.placeholder")} autoFocus />
+                  </TextField>
+                ) : (
+                  <span className="flex-1 text-sm text-gray-900 truncate">
+                    {model || t("models.emptyModel")}
+                  </span>
+                )}
+
+                {/* Edit and delete buttons */}
+                <div className="flex items-center gap-1">
+                  {!isEditing && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingIndex(index)}
+                      className="text-gray-400 hover:text-gray-600 p-1 transition-colors"
+                      aria-label={t("aria.editModel")}
+                    >
+                      <PencilIcon className="size-3.5" aria-hidden="true" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeModel(provider.id, index)}
+                    className="text-gray-400 hover:text-red-500 p-1 transition-colors"
+                    aria-label={t("aria.removeModel")}
+                  >
+                    <TrashIcon className="size-3.5" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ProviderPanel() {
   const { t } = useTranslation("provider");
   const { config, updateProvider } = useProxyConfigStore();
-  const { selectedProviderIndex } = useProxyUIStore();
+  const { selectedProviderId } = useProxyUIStore();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
 
-  if (selectedProviderIndex === null || selectedProviderIndex >= config.providers.length) {
+  if (selectedProviderId === null || !config.providers.find((p) => p.id === selectedProviderId)) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-400">
         <div className="text-center">
@@ -146,10 +263,10 @@ function ProviderPanel() {
     );
   }
 
-  const provider = config.providers[selectedProviderIndex];
+  const provider = config.providers.find((p) => p.id === selectedProviderId)!;
 
-  const update = (patch: Partial<ProxyProviderOptions>) => {
-    updateProvider(selectedProviderIndex, patch);
+  const update = (patch: Partial<UIProvider>) => {
+    updateProvider(provider.id, patch);
   };
 
   const handleTypeChange = (key: Key | null) => {
@@ -158,9 +275,10 @@ function ProviderPanel() {
     const meta = PROVIDER_LIBRARY.find((m) => m.providerInterface === providerInterface);
     update({
       providerInterface,
-      model: meta?.modelExample ?? provider.model,
+      // 为所有空 model 自动填充示例值
+      models: provider.models.map((m) => m || meta?.modelExample || ""),
       // Only prefill baseUrl when the new type requires it; preserve any existing user value otherwise
-      ...(meta?.requiresBaseUrl ? { baseUrl: meta.baseUrlExample ?? "" } : {}),
+      ...(meta?.requiresBaseUrl && !provider.baseUrl ? { baseUrl: meta.baseUrlExample ?? "" } : {}),
     });
   };
 
@@ -168,14 +286,14 @@ function ProviderPanel() {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="p-6 max-w-2xl">
+      <div className="p-6 max-w-2xl bg-secondary min-h-full">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">
           {provider.name || t("item.unnamed")}
         </h1>
         <p className="text-gray-500 text-sm mb-6">{meta?.note ?? t("panel.defaultDescription")}</p>
 
         <SectionHeading>{t("basic.heading")}</SectionHeading>
-        <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-surface px-4">
+        <SettingsContainer>
           <SettingRow label={t("basic.name.label")} description={t("basic.name.description")}>
             <TextField value={provider.name ?? ""} onChange={(v) => update({ name: v })}>
               <Input className="w-44" placeholder={t("basic.name.placeholder")} />
@@ -249,15 +367,11 @@ function ProviderPanel() {
               />
             </TextField>
           </SettingRow>
+        </SettingsContainer>
 
-          <SettingRow label={t("basic.model.label")} description={t("basic.model.description")}>
-            <TextField value={provider.model} onChange={(v) => update({ model: v })}>
-              <Input
-                className="w-44"
-                placeholder={meta?.modelExample ?? t("basic.model.placeholder")}
-              />
-            </TextField>
-          </SettingRow>
+        {/* Models List */}
+        <div className="mt-6">
+          <ModelList provider={provider} />
         </div>
 
         <button
@@ -274,34 +388,22 @@ function ProviderPanel() {
         </button>
 
         {showAdvanced && (
-          <div className="mt-1 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white px-4">
-            <SettingRow
-              label={t("advanced.defaultProvider.label")}
-              description={t("advanced.defaultProvider.description")}
-            >
-              <Switch
-                isSelected={provider.default ?? false}
-                onChange={(v) => update({ default: v })}
+          <div className="mt-1">
+            <SettingsContainer>
+              <SettingRow
+                label={t("advanced.passthroughAuth.label")}
+                description={t("advanced.passthroughAuth.description")}
               >
-                <Switch.Control>
-                  <Switch.Thumb />
-                </Switch.Control>
-              </Switch>
-            </SettingRow>
-
-            <SettingRow
-              label={t("advanced.passthroughAuth.label")}
-              description={t("advanced.passthroughAuth.description")}
-            >
-              <Switch
-                isSelected={provider.passthroughAuth ?? false}
-                onChange={(v) => update({ passthroughAuth: v })}
-              >
-                <Switch.Control>
-                  <Switch.Thumb />
-                </Switch.Control>
-              </Switch>
-            </SettingRow>
+                <Switch
+                  isSelected={provider.passthroughAuth ?? false}
+                  onChange={(v) => update({ passthroughAuth: v })}
+                >
+                  <Switch.Control>
+                    <Switch.Thumb />
+                  </Switch.Control>
+                </Switch>
+              </SettingRow>
+            </SettingsContainer>
           </div>
         )}
       </div>

@@ -22,6 +22,11 @@
   "basic.model.label": "模型",
   "basic.model.description": "请求路由到的模型标识符。",
   "basic.model.placeholder": "model-id",
+  "models.heading": "模型",
+  "models.add": "添加模型",
+  "models.empty": "未配置模型",
+  "models.emptyModel": "空模型",
+  "models.placeholder": "model-id",
   "advanced.heading": "高级",
   "advanced.defaultProvider.label": "默认提供商",
   "advanced.defaultProvider.description": "将此提供商标记为所有网关请求的默认。",
@@ -31,5 +36,10 @@
   "aria.addProvider": "添加提供商",
   "aria.showApiKey": "显示 API 密钥",
   "aria.hideApiKey": "隐藏 API 密钥",
+  "aria.addModel": "添加模型",
+  "aria.removeModel": "删除模型",
+  "aria.editModel": "编辑模型",
+  "aria.setAsDefault": "设为默认模型",
+  "aria.unsetAsDefault": "取消设为默认模型",
   "newProvider": "提供商 {{index}}"
 }

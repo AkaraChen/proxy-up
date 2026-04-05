@@ -1,12 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
-  ProxyGatewayOptions,
-  ProxyProviderOptions,
   ProxyPorts,
   ProxyLogLevel,
   ProxyModelAliases,
   ProxyArtifactOptions,
+  ProxyProviderOptions,
 } from "@proxy-up/proxy/browser";
 import {
   DEFAULT_GATEWAY_HOST,
@@ -19,21 +18,13 @@ import {
   DEFAULT_ENVOY_VERSION,
   DEFAULT_CACHE_DIR,
 } from "@proxy-up/proxy/browser";
+import type { UIProvider, UIConfig } from "./types";
+import { migrateOldProviderToUIProvider, transformUIProvidersToOptions } from "./transform";
 
 interface ProxyConfigState {
-  config: {
-    providers: ProxyProviderOptions[];
-    ports?: ProxyPorts;
-    gatewayHost?: string;
-    logLevel?: ProxyLogLevel;
-    modelAliases?: ProxyModelAliases;
-    artifacts?: ProxyArtifactOptions;
-    cleanupOnStop?: boolean;
-    workDir?: string;
-  };
+  config: UIConfig;
 
-  setConfig: (config: ProxyGatewayOptions) => void;
-  updateProviders: (providers: ProxyProviderOptions[]) => void;
+  updateProviders: (providers: UIProvider[]) => void;
   updatePorts: (ports: ProxyPorts) => void;
   updateLogLevel: (level: ProxyLogLevel) => void;
   updateModelAliases: (aliases: ProxyModelAliases) => void;
@@ -41,13 +32,25 @@ interface ProxyConfigState {
   updateGatewayHost: (host: string) => void;
   updateCleanupOnStop: (cleanup: boolean) => void;
   updateWorkDir: (workDir: string | undefined) => void;
-  addProvider: (provider: ProxyProviderOptions) => void;
-  removeProvider: (index: number) => void;
-  updateProvider: (index: number, provider: Partial<ProxyProviderOptions>) => void;
+
+  // Provider 操作方法
+  addProvider: (provider: UIProvider) => void;
+  removeProvider: (providerId: string) => void;
+  updateProvider: (providerId: string, provider: Partial<UIProvider>) => void;
+
+  // Model 操作方法
+  addModel: (providerId: string, model: string) => void;
+  removeModel: (providerId: string, modelIndex: number) => void;
+  updateModel: (providerId: string, modelIndex: number, model: string) => void;
+  setDefaultModel: (providerId: string, modelIndex: number | undefined) => void;
+
   resetConfig: () => void;
+
+  // 获取转换后的 ProxyProviderOptions（用于生成配置）
+  getProvidersOptions: () => ProxyProviderOptions[];
 }
 
-const initialConfig = {
+const initialConfig: UIConfig = {
   providers: [],
   ports: {
     gateway: DEFAULT_GATEWAY_PORT,
@@ -69,10 +72,8 @@ const initialConfig = {
 
 export const useProxyConfigStore = create(
   persist<ProxyConfigState>(
-    (set) => ({
+    (set, get) => ({
       config: initialConfig,
-
-      setConfig: (config) => set({ config }),
 
       updateProviders: (providers) =>
         set((state) => ({
@@ -114,6 +115,7 @@ export const useProxyConfigStore = create(
           config: { ...state.config, workDir },
         })),
 
+      // Provider 操作方法
       addProvider: (provider) =>
         set((state) => ({
           config: {
@@ -122,29 +124,111 @@ export const useProxyConfigStore = create(
           },
         })),
 
-      removeProvider: (index) =>
+      removeProvider: (providerId) =>
         set((state) => ({
           config: {
             ...state.config,
-            providers: state.config.providers.filter((_, i) => i !== index),
+            providers: state.config.providers.filter((p) => p.id !== providerId),
           },
         })),
 
-      updateProvider: (index, providerUpdate) =>
+      updateProvider: (providerId, providerUpdate) =>
         set((state) => ({
           config: {
             ...state.config,
-            providers: state.config.providers.map((provider, i) =>
-              i === index ? { ...provider, ...providerUpdate } : provider,
+            providers: state.config.providers.map((p) =>
+              p.id === providerId ? { ...p, ...providerUpdate } : p,
+            ),
+          },
+        })),
+
+      // Model 操作方法
+      addModel: (providerId, model) =>
+        set((state) => ({
+          config: {
+            ...state.config,
+            providers: state.config.providers.map((p) =>
+              p.id === providerId ? { ...p, models: [...p.models, model] } : p,
+            ),
+          },
+        })),
+
+      removeModel: (providerId, modelIndex) =>
+        set((state) => {
+          const providers = state.config.providers.map((p) => {
+            if (p.id !== providerId) return p;
+
+            const newModels = p.models.filter((_, i) => i !== modelIndex);
+            // 如果删除的是 default model，清除 defaultModel
+            const newDefaultModel =
+              p.defaultModel === modelIndex
+                ? undefined
+                : p.defaultModel !== undefined && p.defaultModel > modelIndex
+                  ? p.defaultModel - 1
+                  : p.defaultModel;
+
+            return { ...p, models: newModels, defaultModel: newDefaultModel };
+          });
+
+          return { config: { ...state.config, providers } };
+        }),
+
+      updateModel: (providerId, modelIndex, model) =>
+        set((state) => ({
+          config: {
+            ...state.config,
+            providers: state.config.providers.map((p) =>
+              p.id === providerId
+                ? { ...p, models: p.models.map((m, i) => (i === modelIndex ? model : m)) }
+                : p,
+            ),
+          },
+        })),
+
+      setDefaultModel: (providerId, modelIndex) =>
+        set((state) => ({
+          config: {
+            ...state.config,
+            providers: state.config.providers.map((p) =>
+              p.id === providerId ? { ...p, defaultModel: modelIndex } : p,
             ),
           },
         })),
 
       resetConfig: () => set({ config: initialConfig }),
+
+      // 获取转换后的 ProxyProviderOptions（用于生成配置）
+      getProvidersOptions: () => {
+        return transformUIProvidersToOptions(get().config.providers);
+      },
     }),
     {
       name: "proxy-config-storage",
-      version: 1,
+      version: 2, // 升级版本号触发迁移
+      migrate: (persistedState, version) => {
+        if (version === 1) {
+          // 从 v1 ProxyProviderOptions[] 迁移到 v2 UIProvider[]
+          const oldState = persistedState as any;
+          const oldProviders = oldState.config?.providers as ProxyProviderOptions[] | undefined;
+
+          if (!oldProviders) {
+            return persistedState;
+          }
+
+          const newProviders: UIProvider[] = oldProviders.map((p, index) =>
+            migrateOldProviderToUIProvider(p, index),
+          );
+
+          return {
+            ...oldState,
+            config: {
+              ...oldState.config,
+              providers: newProviders,
+            },
+          };
+        }
+        return persistedState;
+      },
     },
   ),
 );

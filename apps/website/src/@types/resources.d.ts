@@ -49,10 +49,15 @@ interface Resources {
     "advanced.heading": "Advanced";
     "advanced.passthroughAuth.description": "Forward the client's Authorization header directly to the upstream.";
     "advanced.passthroughAuth.label": "Passthrough Auth";
+    "aria.addModel": "Add model";
     "aria.addProvider": "Add provider";
+    "aria.editModel": "Edit model";
     "aria.hideApiKey": "Hide API key";
+    "aria.removeModel": "Remove model";
     "aria.removeProvider": "Remove provider";
+    "aria.setAsDefault": "Set as default model";
     "aria.showApiKey": "Show API key";
+    "aria.unsetAsDefault": "Unset as default model";
     "basic.apiKey.description": "The secret key used to authenticate with the provider.";
     "basic.apiKey.label": "API Key";
     "basic.apiKey.placeholder": "sk-…";
@@ -71,6 +76,11 @@ interface Resources {
     "basic.type.label": "Type";
     "item.noModel": "No model configured";
     "item.unnamed": "Unnamed Provider";
+    "models.add": "Add Model";
+    "models.empty": "No models configured";
+    "models.emptyModel": "Empty model";
+    "models.heading": "Models";
+    "models.placeholder": "model-id";
     newProvider: "Provider {{index}}";
     "panel.defaultDescription": "Configure the settings for this provider.";
     "panel.unselected.primary": "Select a provider to configure it,";
@@ -82,8 +92,9 @@ interface Resources {
     "ports.range": "Port {{port}} must be between 1 and 65535";
     "ports.unique": "All ports must be unique";
     "providers.minOne": "At least one provider must be configured";
+    "providers.minOneModel": "Provider must have at least one model";
     "providers.nameUnique": 'Provider name "{{name}}" must be unique';
-    "providers.onlyOneDefault": "Only one provider can be marked as default";
+    "providers.onlyOneDefault": "Only one model can be marked as default";
     "providers.requiresBaseUrl": 'Provider "{{provider}}" requires baseUrl';
   };
 }

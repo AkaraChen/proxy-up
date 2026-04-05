@@ -22,6 +22,11 @@
   "basic.model.label": "Model",
   "basic.model.description": "The model identifier to route requests to.",
   "basic.model.placeholder": "model-id",
+  "models.heading": "Models",
+  "models.add": "Add Model",
+  "models.empty": "No models configured",
+  "models.emptyModel": "Empty model",
+  "models.placeholder": "model-id",
   "advanced.heading": "Advanced",
   "advanced.defaultProvider.label": "Default Provider",
   "advanced.defaultProvider.description": "Mark this provider as the default for all gateway requests.",
@@ -31,5 +36,10 @@
   "aria.addProvider": "Add provider",
   "aria.showApiKey": "Show API key",
   "aria.hideApiKey": "Hide API key",
+  "aria.addModel": "Add model",
+  "aria.removeModel": "Remove model",
+  "aria.editModel": "Edit model",
+  "aria.setAsDefault": "Set as default model",
+  "aria.unsetAsDefault": "Unset as default model",
   "newProvider": "Provider {{index}}"
 }
