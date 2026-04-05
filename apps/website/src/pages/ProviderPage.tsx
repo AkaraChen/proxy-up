@@ -207,7 +207,12 @@ function ModelList({ provider }: { provider: UIProvider }) {
                     onChange={(v) => updateModel(provider.id, index, v)}
                     onBlur={() => setEditingIndex(null)}
                   >
-                    <Input className="flex-1" placeholder={t("models.placeholder")} autoFocus />
+                    <Input
+                      variant="secondary"
+                      className="flex-1"
+                      placeholder={t("models.placeholder")}
+                      autoFocus
+                    />
                   </TextField>
                 ) : (
                   <span className="flex-1 text-sm text-gray-900 truncate">
@@ -296,12 +301,17 @@ function ProviderPanel() {
         <SettingsContainer>
           <SettingRow label={t("basic.name.label")} description={t("basic.name.description")}>
             <TextField value={provider.name ?? ""} onChange={(v) => update({ name: v })}>
-              <Input className="w-44" placeholder={t("basic.name.placeholder")} />
+              <Input
+                variant="secondary"
+                className="w-44"
+                placeholder={t("basic.name.placeholder")}
+              />
             </TextField>
           </SettingRow>
 
           <SettingRow label={t("basic.type.label")} description={t("basic.type.description")}>
             <Select
+              variant="secondary"
               selectedKey={provider.providerInterface ?? null}
               onSelectionChange={handleTypeChange}
             >
@@ -328,6 +338,7 @@ function ProviderPanel() {
                 onChange={(v) => update({ apiKey: v || undefined })}
               >
                 <Input
+                  variant="secondary"
                   className="w-44"
                   type={showApiKey ? "text" : "password"}
                   placeholder={t("basic.apiKey.placeholder")}
@@ -362,6 +373,7 @@ function ProviderPanel() {
               onChange={(v) => update({ baseUrl: v || undefined })}
             >
               <Input
+                variant="secondary"
                 className="w-52"
                 placeholder={meta?.baseUrlExample ?? t("basic.baseUrl.placeholder")}
               />

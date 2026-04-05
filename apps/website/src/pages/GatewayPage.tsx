@@ -39,7 +39,7 @@ function GatewayPage() {
       <SettingsContainer>
         <SettingRow label={t("network.host.label")} description={t("network.host.description")}>
           <TextField value={gatewayHost} onChange={(v) => updateGatewayHost(v)}>
-            <Input className="w-44" placeholder={DEFAULT_GATEWAY_HOST} />
+            <Input variant="secondary" className="w-44" placeholder={DEFAULT_GATEWAY_HOST} />
           </TextField>
         </SettingRow>
         <SettingRow label={t("network.port.label")} description={t("network.port.description")}>
@@ -53,6 +53,7 @@ function GatewayPage() {
             }}
           >
             <Input
+              variant="secondary"
               className="w-28"
               type="number"
               min={1}
@@ -67,6 +68,7 @@ function GatewayPage() {
       <SettingsContainer>
         <SettingRow label={t("logging.level.label")} description={t("logging.level.description")}>
           <Select
+            variant="secondary"
             selectedKey={logLevel}
             onSelectionChange={(key: Key | null) =>
               key != null && updateLogLevel(key as ProxyLogLevel)
@@ -109,7 +111,11 @@ function GatewayPage() {
             value={workDir}
             onChange={(v) => updateWorkDir(v.trim() === "" ? undefined : v)}
           >
-            <Input className="w-52" placeholder={t("behavior.workDir.placeholder")} />
+            <Input
+              variant="secondary"
+              className="w-52"
+              placeholder={t("behavior.workDir.placeholder")}
+            />
           </TextField>
         </SettingRow>
       </SettingsContainer>
