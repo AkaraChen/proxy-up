@@ -1,6 +1,12 @@
 import { expect, test } from "vite-plus/test";
+import YAML from "yaml";
 
-import { DEFAULT_CACHE_DIR, generateGatewayConfig, getDefaultTrustedCaPath } from "../src";
+import {
+  BUILTIN_PROVIDER_ENDPOINTS,
+  DEFAULT_CACHE_DIR,
+  generateGatewayConfig,
+  getDefaultTrustedCaPath,
+} from "../src";
 
 test("generateGatewayConfig normalizes provider config into Plano's rendered shape", () => {
   const generated = generateGatewayConfig({
@@ -36,6 +42,110 @@ test("generateGatewayConfig normalizes provider config into Plano's rendered sha
   expect(generated.planoConfig).toContain("arch.proxy.default:");
   expect(generated.envoyConfig).toContain("/tmp/llm_gateway.wasm");
   expect(generated.envoyConfig).toContain("x-arch-llm-provider");
+});
+
+test("generateGatewayConfig preserves HTTPS upstreams with trusted CA and path trimming", () => {
+  const generated = generateGatewayConfig({
+    providers: [
+      {
+        apiKey: "sk-test",
+        baseUrl: "https://api.example.com/v1/",
+        model: "custom/mock-model",
+        providerInterface: "openai",
+      },
+    ],
+  });
+
+  expect(generated.normalizedProviders[0]).toMatchObject({
+    baseUrlPathPrefix: "/v1",
+    endpointHost: "api.example.com",
+    endpointPort: 443,
+    endpointProtocol: "https",
+    providerInterface: "openai",
+  });
+  expect(generated.envoyConfig).toContain("envoy.transport_sockets.tls");
+  expect(generated.envoyConfig).toContain("sni: api.example.com");
+  expect(generated.envoyConfig).toContain(getDefaultTrustedCaPath());
+});
+
+test("generateGatewayConfig deduplicates route and cluster entries by cluster name", () => {
+  const generated = generateGatewayConfig({
+    providers: [
+      {
+        baseUrl: "http://127.0.0.1:4000/api",
+        model: "openai/mock-model",
+        providerInterface: "openai",
+      },
+      {
+        baseUrl: "http://127.0.0.1:4000/api",
+        model: "openai/second-model",
+        providerInterface: "openai",
+      },
+    ],
+  });
+
+  expect(generated.normalizedProviders[0]?.clusterName).toBe(
+    generated.normalizedProviders[1]?.clusterName,
+  );
+
+  const parsed = YAML.parse(generated.envoyConfig) as {
+    static_resources: {
+      clusters: Array<{ name: string }>;
+      listeners: Array<{
+        filter_chains: Array<{
+          filters: Array<{
+            typed_config?: {
+              route_config?: {
+                virtual_hosts: Array<{
+                  routes: Array<{
+                    route?: { cluster: string };
+                  }>;
+                }>;
+              };
+            };
+          }>;
+        }>;
+      }>;
+    };
+  };
+  const clusterName = generated.normalizedProviders[0]?.clusterName;
+
+  expect(clusterName).toBeTruthy();
+  const internalRoutes =
+    parsed.static_resources?.listeners[1]?.filter_chains[0]?.filters[0]?.typed_config?.route_config
+      ?.virtual_hosts[0]?.routes ?? [];
+
+  const providerRoutes = internalRoutes.filter((route) => route.route?.cluster === clusterName);
+
+  expect(providerRoutes).toHaveLength(1);
+  expect(parsed.static_resources.clusters.map((cluster) => cluster.name)).toContain(clusterName);
+});
+
+test("generateGatewayConfig accepts model aliases in both string and object forms", () => {
+  const generated = generateGatewayConfig({
+    modelAliases: {
+      "arch.proxy.default": "openai/gpt-4.1-mini",
+      "arch.proxy.preview": {
+        target: "anthropic/claude-sonnet-4",
+      },
+    },
+    providers: [
+      {
+        model: "openai/gpt-4.1-mini",
+      },
+    ],
+  });
+
+  expect(generated.modelAliases).toEqual({
+    "arch.proxy.default": {
+      target: "openai/gpt-4.1-mini",
+    },
+    "arch.proxy.preview": {
+      target: "anthropic/claude-sonnet-4",
+    },
+  });
+  expect(generated.planoConfig).toContain("model_aliases:");
+  expect(generated.planoConfig).toContain("arch.proxy.preview:");
 });
 
 test("generateGatewayConfig rejects custom providers without a provider interface", () => {
@@ -121,6 +231,36 @@ test("generateGatewayConfig rejects multiple defaults", () => {
       ],
     }),
   ).toThrow(/Only one provider can be marked as default/i);
+});
+
+test("generateGatewayConfig rejects duplicate provider names", () => {
+  expect(() =>
+    generateGatewayConfig({
+      providers: [
+        {
+          model: "openai/gpt-4.1-mini",
+          name: "shared-name",
+        },
+        {
+          model: "anthropic/claude-sonnet-4",
+          name: "shared-name",
+        },
+      ],
+    }),
+  ).toThrow(/must be unique/i);
+});
+
+test("builtin provider endpoints expose the expected upstreams", () => {
+  expect(BUILTIN_PROVIDER_ENDPOINTS.openai).toEqual({
+    host: "api.openai.com",
+    port: 443,
+    protocol: "https",
+  });
+  expect(BUILTIN_PROVIDER_ENDPOINTS.anthropic).toEqual({
+    host: "api.anthropic.com",
+    port: 443,
+    protocol: "https",
+  });
 });
 
 test("runtime defaults expose a stable cache path and trusted CA path", () => {

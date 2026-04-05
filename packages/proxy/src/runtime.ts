@@ -1,11 +1,17 @@
 import { Command, CommandExecutor, FileSystem, HttpClient, Path } from "@effect/platform";
-import { Effect, Exit, Scope, Stream } from "effect";
-import getPort, { clearLockedPorts } from "get-port";
+import { Effect, Scope, Stream } from "effect";
 
 import { ensureProxyArtifactsEffect } from "./assets.js";
 import { DEFAULT_GATEWAY_HOST, DEFAULT_INTERNAL_HOST, DEFAULT_LOG_LEVEL } from "./constants.js";
 import { generateGatewayConfig } from "./config.js";
 import { runProxyEffect } from "./effect-runtime.js";
+import {
+  assertPortAvailableEffect,
+  closeScopeQuietlyEffect,
+  findAvailablePortEffect,
+  asError,
+  isManagedProcessRunningEffect,
+} from "./utils.js";
 import type {
   GeneratedProxyConfig,
   ProxyGatewayOptions,
@@ -17,31 +23,6 @@ interface ManagedProcess {
   readonly process: CommandExecutor.Process;
   readonly scope: Scope.CloseableScope;
 }
-
-const asError = (error: unknown) => (error instanceof Error ? error : new Error(String(error)));
-
-const findAvailablePortEffect = (host = DEFAULT_INTERNAL_HOST, port?: number) =>
-  Effect.tryPromise({
-    try: () => getPort({ host, port }),
-    catch: asError,
-  });
-
-const assertPortAvailableEffect = (port: number, host: string, label: string) =>
-  Effect.gen(function* () {
-    yield* Effect.sync(() => {
-      clearLockedPorts();
-    });
-    const resolvedPort = yield* findAvailablePortEffect(host, port);
-
-    if (resolvedPort !== port) {
-      return yield* Effect.fail(
-        new Error(`Port ${port} for ${label} is not available on ${host}.`),
-      );
-    }
-  });
-
-const closeScopeQuietlyEffect = (scope: Scope.CloseableScope) =>
-  Scope.close(scope, Exit.void).pipe(Effect.catchAll(() => Effect.void));
 
 const wireProcessToLogEffect = (
   processName: string,
@@ -107,11 +88,6 @@ const startManagedProcessEffect = (args: {
     );
   });
 
-const isManagedProcessRunningEffect = (managed?: ManagedProcess) =>
-  managed
-    ? managed.process.isRunning.pipe(Effect.catchAll(() => Effect.succeed(false)))
-    : Effect.succeed(false);
-
 const stopManagedProcessEffect = (processName: string, managed?: ManagedProcess) => {
   if (!managed) {
     return Effect.void;
@@ -133,10 +109,10 @@ const stopManagedProcessEffect = (processName: string, managed?: ManagedProcess)
     Effect.flatten,
   );
 
-  return isManagedProcessRunningEffect(managed).pipe(
+  return isManagedProcessRunningEffect(managed.process).pipe(
     Effect.flatMap((running) => (running ? terminateEffect : Effect.void)),
     Effect.catchAll((error) =>
-      isManagedProcessRunningEffect(managed).pipe(
+      isManagedProcessRunningEffect(managed.process).pipe(
         Effect.flatMap((running) => (running ? Effect.fail(error) : Effect.void)),
       ),
     ),
@@ -168,7 +144,7 @@ const waitUntilReadyEffect = (args: {
         );
       }
 
-      if (!(yield* isManagedProcessRunningEffect(args.brightstaff))) {
+      if (!(yield* isManagedProcessRunningEffect(args.brightstaff?.process))) {
         return yield* Effect.fail(
           new Error(
             `brightstaff exited before the gateway became ready. See ${args.brightstaffLogPath}.`,
@@ -176,7 +152,7 @@ const waitUntilReadyEffect = (args: {
         );
       }
 
-      if (!(yield* isManagedProcessRunningEffect(args.envoy))) {
+      if (!(yield* isManagedProcessRunningEffect(args.envoy?.process))) {
         return yield* Effect.fail(
           new Error(`Envoy exited before the gateway became ready. See ${args.envoyLogPath}.`),
         );
