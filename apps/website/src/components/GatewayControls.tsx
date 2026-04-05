@@ -1,4 +1,4 @@
-import { Button } from "@heroui/react";
+import { Button, toast } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 import { PlayIcon, StopIcon, ArrowPathIcon, CheckIcon } from "@heroicons/react/24/outline";
 import {
@@ -80,8 +80,10 @@ export function GatewayControls() {
       };
 
       await saveMutation.mutateAsync(serverConfig);
+      toast.success(t("controls.saveSuccess"));
     } catch (error) {
       setError(error instanceof Error ? error.message : "Failed to save config");
+      toast.danger(error instanceof Error ? error.message : "Failed to save config");
     }
   };
 

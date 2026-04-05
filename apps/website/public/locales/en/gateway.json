@@ -26,6 +26,7 @@
   "logLevels.error.label": "Error",
   "logLevels.error.description": "Only failures that need immediate action.",
   "controls.save": "Save",
+  "controls.saveSuccess": "Configuration saved",
   "controls.start": "Start",
   "controls.stop": "Stop",
   "controls.restart": "Restart",

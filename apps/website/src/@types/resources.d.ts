@@ -18,6 +18,7 @@ interface Resources {
     "behavior.workDir.placeholder": "(temporary)";
     "controls.restart": "Restart";
     "controls.save": "Save";
+    "controls.saveSuccess": "Configuration saved";
     "controls.start": "Start";
     "controls.stop": "Stop";
     description: "Configure the core settings for your proxy gateway.";

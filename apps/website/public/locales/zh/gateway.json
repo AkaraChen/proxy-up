@@ -26,6 +26,7 @@
   "logLevels.error.label": "错误",
   "logLevels.error.description": "仅需要立即处理的失败。",
   "controls.save": "保存",
+  "controls.saveSuccess": "配置已保存",
   "controls.start": "启动",
   "controls.stop": "停止",
   "controls.restart": "重启",
