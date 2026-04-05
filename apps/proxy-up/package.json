@@ -12,8 +12,7 @@
   },
   "scripts": {
     "dev": "tsx src/cli.ts",
-    "build": "pnpm run build:frontend && pnpm run build:cli",
-    "build:frontend": "vp run website#build && node scripts/copy-frontend.js",
+    "build": "node scripts/copy-frontend.js && pnpm run build:cli",
     "build:cli": "vp pack",
     "setup": "tsx scripts/setup.ts",
     "download-artifacts": "tsx scripts/download-artifacts.ts",

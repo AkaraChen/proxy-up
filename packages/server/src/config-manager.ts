@@ -33,6 +33,26 @@ async function ensureConfigDir(): Promise<void> {
   await fs.mkdir(CONFIG_DIR, { recursive: true });
 }
 
+function getDefaultConfig(): ProxyConfig {
+  return {
+    providers: [],
+    cleanupOnStop: true,
+    logLevel: "info",
+  };
+}
+
+export async function ensureDefaultConfig(): Promise<void> {
+  await ensureConfigDir();
+
+  try {
+    await fs.access(CONFIG_FILE);
+  } catch {
+    // Config file doesn't exist, create default
+    const defaultConfig = getDefaultConfig();
+    await fs.writeFile(CONFIG_FILE, JSON.stringify(defaultConfig, null, 2), "utf-8");
+  }
+}
+
 export async function saveCurrentConfig(config: ProxyConfig): Promise<string> {
   await ensureConfigDir();
   await fs.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2), "utf-8");

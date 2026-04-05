@@ -2,7 +2,7 @@
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
-import serverApp from "@proxy-up/server";
+import serverApp, { ensureDefaultConfig } from "@proxy-up/server";
 import open from "open";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -37,23 +37,31 @@ app.notFound((c) => {
   }
 });
 
-const server = serve({
-  fetch: app.fetch,
-  port: PORT,
-});
+// Ensure default config exists before starting server
+ensureDefaultConfig()
+  .then(() => {
+    const server = serve({
+      fetch: app.fetch,
+      port: PORT,
+    });
 
-console.log(`✨ Proxy Up is running at http://localhost:${PORT}`);
+    console.log(`✨ Proxy Up is running at http://localhost:${PORT}`);
 
-// Open browser
-setTimeout(() => {
-  open(`http://localhost:${PORT}`).catch((err) => {
-    console.warn("Could not open browser:", err.message);
+    // Open browser
+    setTimeout(() => {
+      open(`http://localhost:${PORT}`).catch((err) => {
+        console.warn("Could not open browser:", err.message);
+      });
+    }, 1000);
+
+    // Graceful shutdown
+    process.on("SIGINT", () => {
+      console.log("\n👋 Shutting down...");
+      server.close();
+      process.exit(0);
+    });
+  })
+  .catch((error: unknown) => {
+    console.error("Failed to initialize config:", error);
+    process.exit(1);
   });
-}, 1000);
-
-// Graceful shutdown
-process.on("SIGINT", () => {
-  console.log("\n👋 Shutting down...");
-  server.close();
-  process.exit(0);
-});
