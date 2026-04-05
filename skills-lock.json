@@ -51,6 +51,11 @@
       "sourceType": "github",
       "computedHash": "ce6fbd844488a326208c1302c73b2865fa4fb20e447b6a06c038315444d6e0c5"
     },
+    "effectts": {
+      "source": "artimath/effect-skills",
+      "sourceType": "github",
+      "computedHash": "6cb687d4536a0190403fd8dfad70cbdb66406d6ed5d162db1a2727d828211bbd"
+    },
     "extract": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",

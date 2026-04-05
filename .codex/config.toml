@@ -1,3 +1,7 @@
 [mcp_servers.heroui-react]
 command = "npx"
 args = ["-y", "@heroui/react-mcp@latest"]
+
+[mcp_servers.effect-docs]
+command = "npx"
+args = ["-y", "effect-mcp@latest"]

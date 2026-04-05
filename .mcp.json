@@ -4,6 +4,11 @@
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "@heroui/react-mcp@latest"]
+    },
+    "effect-docs": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "effect-mcp@latest"]
     }
   }
 }
