@@ -13,6 +13,7 @@ import {
 // Re-export types
 export type { ProxyConfig, ProxyStatus } from "./config-manager.js";
 export { ensureDefaultConfig } from "./config-manager.js";
+export { stopProxyService } from "./service-manager.js";
 
 const app = new Hono()
   .use("*", cors())

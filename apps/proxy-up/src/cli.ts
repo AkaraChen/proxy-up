@@ -2,7 +2,7 @@
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
-import serverApp, { ensureDefaultConfig } from "@proxy-up/server";
+import serverApp, { ensureDefaultConfig, stopProxyService } from "@proxy-up/server";
 import open from "open";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -55,11 +55,22 @@ ensureDefaultConfig()
     }, 1000);
 
     // Graceful shutdown
-    process.on("SIGINT", () => {
-      console.log("\n👋 Shutting down...");
-      server.close();
-      process.exit(0);
-    });
+    const shutdown = async (signal: string) => {
+      console.log(`\n👋 Received ${signal}, shutting down...`);
+      try {
+        await stopProxyService(true);
+        console.log("✅ Proxy service stopped");
+      } catch (error) {
+        console.error("⚠️ Error stopping proxy service:", error);
+      }
+      server.close(() => {
+        console.log("✅ Server closed");
+        process.exit(0);
+      });
+    };
+
+    process.on("SIGINT", () => shutdown("SIGINT"));
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
   })
   .catch((error: unknown) => {
     console.error("Failed to initialize config:", error);
