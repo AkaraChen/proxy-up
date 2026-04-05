@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { immer } from "zustand/middleware/immer";
 import type {
   ProxyPorts,
   ProxyLogLevel,
@@ -19,7 +19,7 @@ import {
   DEFAULT_CACHE_DIR,
 } from "@proxy-up/proxy/browser";
 import type { UIProvider, UIConfig } from "./types";
-import { migrateOldProviderToUIProvider, transformUIProvidersToOptions } from "./transform";
+import { transformUIProvidersToOptions } from "./transform";
 
 interface ProxyConfigState {
   config: UIConfig;
@@ -70,165 +70,119 @@ const initialConfig: UIConfig = {
   workDir: undefined,
 };
 
-export const useProxyConfigStore = create(
-  persist<ProxyConfigState>(
-    (set, get) => ({
-      config: initialConfig,
+export const useProxyConfigStore = create<ProxyConfigState>()(
+  immer((set, get) => ({
+    config: initialConfig,
 
-      updateProviders: (providers) =>
-        set((state) => ({
-          config: { ...state.config, providers },
-        })),
+    updateProviders: (providers) =>
+      set((state) => {
+        state.config.providers = providers;
+      }),
 
-      updatePorts: (ports) =>
-        set((state) => ({
-          config: { ...state.config, ports },
-        })),
+    updatePorts: (ports) =>
+      set((state) => {
+        state.config.ports = ports;
+      }),
 
-      updateLogLevel: (logLevel) =>
-        set((state) => ({
-          config: { ...state.config, logLevel },
-        })),
+    updateLogLevel: (logLevel) =>
+      set((state) => {
+        state.config.logLevel = logLevel;
+      }),
 
-      updateModelAliases: (modelAliases) =>
-        set((state) => ({
-          config: { ...state.config, modelAliases },
-        })),
+    updateModelAliases: (modelAliases) =>
+      set((state) => {
+        state.config.modelAliases = modelAliases;
+      }),
 
-      updateArtifacts: (artifacts) =>
-        set((state) => ({
-          config: { ...state.config, artifacts },
-        })),
+    updateArtifacts: (artifacts) =>
+      set((state) => {
+        state.config.artifacts = artifacts;
+      }),
 
-      updateGatewayHost: (gatewayHost) =>
-        set((state) => ({
-          config: { ...state.config, gatewayHost },
-        })),
+    updateGatewayHost: (gatewayHost) =>
+      set((state) => {
+        state.config.gatewayHost = gatewayHost;
+      }),
 
-      updateCleanupOnStop: (cleanupOnStop) =>
-        set((state) => ({
-          config: { ...state.config, cleanupOnStop },
-        })),
+    updateCleanupOnStop: (cleanupOnStop) =>
+      set((state) => {
+        state.config.cleanupOnStop = cleanupOnStop;
+      }),
 
-      updateWorkDir: (workDir) =>
-        set((state) => ({
-          config: { ...state.config, workDir },
-        })),
+    updateWorkDir: (workDir) =>
+      set((state) => {
+        state.config.workDir = workDir;
+      }),
 
-      // Provider 操作方法
-      addProvider: (provider) =>
-        set((state) => ({
-          config: {
-            ...state.config,
-            providers: [...state.config.providers, provider],
-          },
-        })),
+    // Provider 操作方法
+    addProvider: (provider) =>
+      set((state) => {
+        state.config.providers.push(provider);
+      }),
 
-      removeProvider: (providerId) =>
-        set((state) => ({
-          config: {
-            ...state.config,
-            providers: state.config.providers.filter((p) => p.id !== providerId),
-          },
-        })),
-
-      updateProvider: (providerId, providerUpdate) =>
-        set((state) => ({
-          config: {
-            ...state.config,
-            providers: state.config.providers.map((p) =>
-              p.id === providerId ? { ...p, ...providerUpdate } : p,
-            ),
-          },
-        })),
-
-      // Model 操作方法
-      addModel: (providerId, model) =>
-        set((state) => ({
-          config: {
-            ...state.config,
-            providers: state.config.providers.map((p) =>
-              p.id === providerId ? { ...p, models: [...p.models, model] } : p,
-            ),
-          },
-        })),
-
-      removeModel: (providerId, modelIndex) =>
-        set((state) => {
-          const providers = state.config.providers.map((p) => {
-            if (p.id !== providerId) return p;
-
-            const newModels = p.models.filter((_, i) => i !== modelIndex);
-            // 如果删除的是 default model，清除 defaultModel
-            const newDefaultModel =
-              p.defaultModel === modelIndex
-                ? undefined
-                : p.defaultModel !== undefined && p.defaultModel > modelIndex
-                  ? p.defaultModel - 1
-                  : p.defaultModel;
-
-            return { ...p, models: newModels, defaultModel: newDefaultModel };
-          });
-
-          return { config: { ...state.config, providers } };
-        }),
-
-      updateModel: (providerId, modelIndex, model) =>
-        set((state) => ({
-          config: {
-            ...state.config,
-            providers: state.config.providers.map((p) =>
-              p.id === providerId
-                ? { ...p, models: p.models.map((m, i) => (i === modelIndex ? model : m)) }
-                : p,
-            ),
-          },
-        })),
-
-      setDefaultModel: (providerId, modelIndex) =>
-        set((state) => ({
-          config: {
-            ...state.config,
-            providers: state.config.providers.map((p) =>
-              p.id === providerId ? { ...p, defaultModel: modelIndex } : p,
-            ),
-          },
-        })),
-
-      resetConfig: () => set({ config: initialConfig }),
-
-      // 获取转换后的 ProxyProviderOptions（用于生成配置）
-      getProvidersOptions: () => {
-        return transformUIProvidersToOptions(get().config.providers);
-      },
-    }),
-    {
-      name: "proxy-config-storage",
-      version: 2, // 升级版本号触发迁移
-      migrate: (persistedState, version) => {
-        if (version === 1) {
-          // 从 v1 ProxyProviderOptions[] 迁移到 v2 UIProvider[]
-          const oldState = persistedState as any;
-          const oldProviders = oldState.config?.providers as ProxyProviderOptions[] | undefined;
-
-          if (!oldProviders) {
-            return persistedState;
-          }
-
-          const newProviders: UIProvider[] = oldProviders.map((p, index) =>
-            migrateOldProviderToUIProvider(p, index),
-          );
-
-          return {
-            ...oldState,
-            config: {
-              ...oldState.config,
-              providers: newProviders,
-            },
-          };
+    removeProvider: (providerId) =>
+      set((state) => {
+        const index = state.config.providers.findIndex((p) => p.id === providerId);
+        if (index !== -1) {
+          state.config.providers.splice(index, 1);
         }
-        return persistedState;
-      },
+      }),
+
+    updateProvider: (providerId, providerUpdate) =>
+      set((state) => {
+        const provider = state.config.providers.find((p) => p.id === providerId);
+        if (provider) {
+          Object.assign(provider, providerUpdate);
+        }
+      }),
+
+    // Model 操作方法
+    addModel: (providerId, model) =>
+      set((state) => {
+        const provider = state.config.providers.find((p) => p.id === providerId);
+        if (provider) {
+          provider.models.push(model);
+        }
+      }),
+
+    removeModel: (providerId, modelIndex) =>
+      set((state) => {
+        const provider = state.config.providers.find((p) => p.id === providerId);
+        if (provider) {
+          provider.models.splice(modelIndex, 1);
+          // 如果删除的是 default model，清除 defaultModel
+          if (provider.defaultModel === modelIndex) {
+            provider.defaultModel = undefined;
+          } else if (provider.defaultModel !== undefined && provider.defaultModel > modelIndex) {
+            provider.defaultModel -= 1;
+          }
+        }
+      }),
+
+    updateModel: (providerId, modelIndex, model) =>
+      set((state) => {
+        const provider = state.config.providers.find((p) => p.id === providerId);
+        if (provider) {
+          provider.models[modelIndex] = model;
+        }
+      }),
+
+    setDefaultModel: (providerId, modelIndex) =>
+      set((state) => {
+        const provider = state.config.providers.find((p) => p.id === providerId);
+        if (provider) {
+          provider.defaultModel = modelIndex;
+        }
+      }),
+
+    resetConfig: () =>
+      set((state) => {
+        state.config = initialConfig;
+      }),
+
+    // 获取转换后的 ProxyProviderOptions（用于生成配置）
+    getProvidersOptions: () => {
+      return transformUIProvidersToOptions(get().config.providers);
     },
-  ),
+  })),
 );

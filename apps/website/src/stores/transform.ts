@@ -23,22 +23,3 @@ export function expandUIProviderToOptions(uiProvider: UIProvider): ProxyProvider
 export function transformUIProvidersToOptions(uiProviders: UIProvider[]): ProxyProviderOptions[] {
   return uiProviders.flatMap(expandUIProviderToOptions);
 }
-
-/**
- * 从旧的 ProxyProviderOptions 数据迁移到新的 UIProvider 格式
- */
-export function migrateOldProviderToUIProvider(
-  oldProvider: ProxyProviderOptions,
-  index: number,
-): UIProvider {
-  return {
-    id: crypto.randomUUID(),
-    name: oldProvider.name ?? `Provider ${index + 1}`,
-    providerInterface: oldProvider.providerInterface,
-    apiKey: oldProvider.apiKey,
-    baseUrl: oldProvider.baseUrl,
-    models: [oldProvider.model],
-    defaultModel: oldProvider.default ? 0 : undefined, // 如果旧数据是 default，则第一个 model 为 default
-    passthroughAuth: oldProvider.passthroughAuth,
-  };
-}

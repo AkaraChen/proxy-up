@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { immer } from "zustand/middleware/immer";
 
 interface ProxyUIState {
   selectedProviderId: string | null; // 改用 provider ID 而非 index
@@ -27,25 +28,49 @@ const initialValidationErrors = {
   global: [],
 };
 
-export const useProxyUIStore = create<ProxyUIState>((set) => ({
-  selectedProviderId: null,
-  selectedModelIndex: null,
-  isRunning: false,
-  isStarting: false,
-  error: null,
-  validationErrors: initialValidationErrors,
+export const useProxyUIStore = create<ProxyUIState>()(
+  immer((set) => ({
+    selectedProviderId: null,
+    selectedModelIndex: null,
+    isRunning: false,
+    isStarting: false,
+    error: null,
+    validationErrors: initialValidationErrors,
 
-  setSelectedProvider: (id) => set({ selectedProviderId: id, selectedModelIndex: null }),
+    setSelectedProvider: (id) =>
+      set((state) => {
+        state.selectedProviderId = id;
+        state.selectedModelIndex = null;
+      }),
 
-  setSelectedModelIndex: (index) => set({ selectedModelIndex: index }),
+    setSelectedModelIndex: (index) =>
+      set((state) => {
+        state.selectedModelIndex = index;
+      }),
 
-  setRunning: (running) => set({ isRunning: running }),
+    setRunning: (running) =>
+      set((state) => {
+        state.isRunning = running;
+      }),
 
-  setStarting: (starting) => set({ isStarting: starting }),
+    setStarting: (starting) =>
+      set((state) => {
+        state.isStarting = starting;
+      }),
 
-  setError: (error) => set({ error }),
+    setError: (error) =>
+      set((state) => {
+        state.error = error;
+      }),
 
-  setValidationErrors: (validationErrors) => set({ validationErrors }),
+    setValidationErrors: (validationErrors) =>
+      set((state) => {
+        state.validationErrors = validationErrors;
+      }),
 
-  clearValidationErrors: () => set({ validationErrors: initialValidationErrors }),
-}));
+    clearValidationErrors: () =>
+      set((state) => {
+        state.validationErrors = initialValidationErrors;
+      }),
+  })),
+);
