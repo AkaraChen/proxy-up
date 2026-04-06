@@ -17,7 +17,6 @@ export interface ProviderMeta {
 
 export interface ProviderPreset {
   baseUrl: string;
-  description: string;
   label: string;
   modelExample: string;
   providerInterface: ProxyProviderInterface;

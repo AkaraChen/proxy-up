@@ -165,21 +165,18 @@ export const LOG_LEVEL_OPTIONS: LogLevelOption[] = [
 export const PROVIDER_PRESETS: ProviderPreset[] = [
   {
     label: "OpenAI",
-    description: "使用 OpenAI 官方 API，支持 GPT 系列模型。",
     providerInterface: "openai",
     baseUrl: "https://api.openai.com/v1",
     modelExample: "gpt-5.4",
   },
   {
     label: "Anthropic",
-    description: "使用 Anthropic 官方 API，支持 Claude 系列模型。",
     providerInterface: "anthropic",
     baseUrl: "https://api.anthropic.com/v1",
     modelExample: "claude-4-6-opus-latest",
   },
   {
     label: "火山引擎 Coding Plan",
-    description: "火山引擎 Coding Plan API，使用 Anthropic 接口协议。",
     providerInterface: "anthropic",
     baseUrl: "https://ark.cn-beijing.volces.com/api/coding/v1",
     modelExample: "kimi-k2.5",

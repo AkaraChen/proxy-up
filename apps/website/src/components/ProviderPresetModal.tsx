@@ -28,8 +28,7 @@ function PresetCard({ preset, onSelect }: { preset: ProviderPreset; onSelect: ()
           {preset.providerInterface}
         </Chip>
       </div>
-      <p className="text-xs text-gray-500 line-clamp-2">{preset.description}</p>
-      <p className="text-xs text-gray-400 mt-1">
+      <p className="text-xs text-gray-400">
         {t("preset.modelExample")}: <span className="font-mono">{preset.modelExample}</span>
       </p>
     </button>
