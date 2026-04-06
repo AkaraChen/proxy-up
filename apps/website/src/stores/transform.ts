@@ -34,7 +34,7 @@ export function expandUIProviderToOptions(uiProvider: UIProvider): ProxyProvider
     ? PROVIDER_INTERFACE_TO_PROVIDER[providerInterface]
     : undefined;
 
-  return uiProvider.models.map((model, index) => {
+  return uiProvider.models.map((model) => {
     // 如果 model 不包含 "/" 且有 provider，则自动添加 provider 前缀
     const transformedModel = provider && !model.includes("/") ? `${provider}/${model}` : model;
 
@@ -44,7 +44,6 @@ export function expandUIProviderToOptions(uiProvider: UIProvider): ProxyProvider
       apiKey: uiProvider.apiKey,
       baseUrl: uiProvider.baseUrl,
       model: transformedModel, // 传给后端的 model 包含 provider 前缀
-      default: uiProvider.defaultModel === index, // 只有指定 model index 的才是 default
       passthroughAuth: uiProvider.passthroughAuth,
     };
   });
@@ -91,9 +90,6 @@ export function transformOptionsToUIProviders(options: ProxyProviderOptions[]): 
     if (existingProvider) {
       // 添加 model 到现有 provider（使用纯 model 名）
       existingProvider.models.push(pureModelName);
-      if (opt.default) {
-        existingProvider.defaultModel = existingProvider.models.length - 1;
-      }
     } else {
       // 创建新 provider（使用纯 model 名）
       providerMap.set(key, {
@@ -103,7 +99,6 @@ export function transformOptionsToUIProviders(options: ProxyProviderOptions[]): 
         apiKey: opt.apiKey,
         baseUrl: opt.baseUrl,
         models: [pureModelName],
-        defaultModel: opt.default ? 0 : undefined,
         passthroughAuth: opt.passthroughAuth,
       });
     }

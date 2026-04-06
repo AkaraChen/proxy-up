@@ -17,8 +17,6 @@ export interface UIProvider {
   baseUrl?: string;
   /** 多个 model 列表 */
   models: string[];
-  /** 哪个 model index 是 default（undefined 表示无 default） */
-  defaultModel?: number;
   /** 是否透传认证 */
   passthroughAuth?: boolean;
 }

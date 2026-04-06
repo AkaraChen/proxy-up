@@ -41,7 +41,6 @@ export function ProviderPresetModal({
       providerInterface: preset.providerInterface,
       baseUrl: preset.baseUrl,
       models: [preset.modelExample],
-      defaultModel: providerCount === 0 ? 0 : undefined,
     };
     onSelectPreset(newProvider);
     onClose();

@@ -18,7 +18,6 @@ import {
   PlusIcon,
   TrashIcon,
   PencilIcon,
-  StarIcon,
 } from "@heroicons/react/24/outline";
 import { useProxyConfigStore, useProxyUIStore } from "../stores";
 import { PROVIDER_LIBRARY } from "../components/config/data";
@@ -99,7 +98,6 @@ function ProviderSidebar() {
       id: generateUUID(),
       name: t("newProvider", { index: newIndex + 1, defaultValue: `Provider ${newIndex + 1}` }),
       models: [""],
-      defaultModel: newIndex === 0 ? 0 : undefined,
     };
     addProvider(newProvider);
     setSelectedProvider(newProvider.id);
@@ -169,7 +167,7 @@ function ProviderSidebar() {
 
 function ModelList({ provider }: { provider: UIProvider }) {
   const { t } = useTranslation("provider");
-  const { addModel, removeModel, updateModel, setDefaultModel } = useProxyConfigStore();
+  const { addModel, removeModel, updateModel } = useProxyConfigStore();
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const handleAddModel = () => {
@@ -201,7 +199,6 @@ function ModelList({ provider }: { provider: UIProvider }) {
           <p className="text-xs text-gray-400 text-center py-4">{t("models.empty")}</p>
         ) : (
           provider.models.map((model, index) => {
-            const isDefault = provider.defaultModel === index;
             const isEditing = editingIndex === index;
 
             return (
@@ -209,21 +206,6 @@ function ModelList({ provider }: { provider: UIProvider }) {
                 key={index}
                 className="flex items-center gap-2 px-3 py-2 border-b border-gray-50 last:border-b-0"
               >
-                {/* Default star icon */}
-                <button
-                  type="button"
-                  onClick={() => setDefaultModel(provider.id, isDefault ? undefined : index)}
-                  className={[
-                    "shrink-0 transition-colors",
-                    isDefault
-                      ? "text-yellow-500 hover:text-yellow-600"
-                      : "text-gray-300 hover:text-yellow-400",
-                  ].join(" ")}
-                  aria-label={isDefault ? t("aria.unsetAsDefault") : t("aria.setAsDefault")}
-                >
-                  <StarIcon className="size-4" aria-hidden="true" />
-                </button>
-
                 {/* Model input or display */}
                 {isEditing ? (
                   <TextField

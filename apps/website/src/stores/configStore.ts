@@ -42,7 +42,6 @@ interface ProxyConfigState {
   addModel: (providerId: string, model: string) => void;
   removeModel: (providerId: string, modelIndex: number) => void;
   updateModel: (providerId: string, modelIndex: number, model: string) => void;
-  setDefaultModel: (providerId: string, modelIndex: number | undefined) => void;
 
   resetConfig: () => void;
 
@@ -150,12 +149,6 @@ export const useProxyConfigStore = create<ProxyConfigState>()(
         const provider = state.config.providers.find((p) => p.id === providerId);
         if (provider) {
           provider.models.splice(modelIndex, 1);
-          // 如果删除的是 default model，清除 defaultModel
-          if (provider.defaultModel === modelIndex) {
-            provider.defaultModel = undefined;
-          } else if (provider.defaultModel !== undefined && provider.defaultModel > modelIndex) {
-            provider.defaultModel -= 1;
-          }
         }
       }),
 
@@ -164,14 +157,6 @@ export const useProxyConfigStore = create<ProxyConfigState>()(
         const provider = state.config.providers.find((p) => p.id === providerId);
         if (provider) {
           provider.models[modelIndex] = model;
-        }
-      }),
-
-    setDefaultModel: (providerId, modelIndex) =>
-      set((state) => {
-        const provider = state.config.providers.find((p) => p.id === providerId);
-        if (provider) {
-          provider.defaultModel = modelIndex;
         }
       }),
 

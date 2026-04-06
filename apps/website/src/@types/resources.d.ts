@@ -63,9 +63,7 @@ interface Resources {
     "aria.hideApiKey": "Hide API key";
     "aria.removeModel": "Remove model";
     "aria.removeProvider": "Remove provider";
-    "aria.setAsDefault": "Set as default model";
     "aria.showApiKey": "Show API key";
-    "aria.unsetAsDefault": "Unset as default model";
     "basic.apiKey.description": "The secret key used to authenticate with the provider.";
     "basic.apiKey.label": "API Key";
     "basic.apiKey.placeholder": "sk-…";

@@ -39,8 +39,6 @@
   "aria.addModel": "添加模型",
   "aria.removeModel": "删除模型",
   "aria.editModel": "编辑模型",
-  "aria.setAsDefault": "设为默认模型",
-  "aria.unsetAsDefault": "取消设为默认模型",
   "newProvider": "提供商 {{index}}",
   "preset.title": "选择 Provider 模板",
   "preset.skip": "自定义配置"
