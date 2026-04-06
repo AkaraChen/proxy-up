@@ -14,3 +14,10 @@ export interface ProviderMeta {
   providerInterface: ProxyProviderInterface;
   requiresBaseUrl: boolean;
 }
+
+export interface ProviderPreset {
+  baseUrl: string;
+  label: string;
+  modelExample: string;
+  providerInterface: ProxyProviderInterface;
+}

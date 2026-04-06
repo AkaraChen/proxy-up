@@ -4,7 +4,7 @@ import type {
   ProxyProviderOptions,
 } from "@proxy-up/proxy/browser";
 
-import type { ProviderMeta } from "./types";
+import type { ProviderMeta, ProviderPreset } from "./types";
 
 export interface LogLevelOption {
   description: string;
@@ -160,6 +160,27 @@ export const LOG_LEVEL_OPTIONS: LogLevelOption[] = [
   { description: "Useful day-to-day runtime events.", label: "Info", value: "info" },
   { description: "Only suspicious conditions and warnings.", label: "Warn", value: "warn" },
   { description: "Only failures that need immediate action.", label: "Error", value: "error" },
+];
+
+export const PROVIDER_PRESETS: ProviderPreset[] = [
+  {
+    label: "OpenAI",
+    providerInterface: "openai",
+    baseUrl: "https://api.openai.com/v1",
+    modelExample: "gpt-5.4",
+  },
+  {
+    label: "Anthropic",
+    providerInterface: "anthropic",
+    baseUrl: "https://api.anthropic.com/v1",
+    modelExample: "claude-4-6-opus-latest",
+  },
+  {
+    label: "火山引擎 Coding Plan",
+    providerInterface: "anthropic",
+    baseUrl: "https://ark.cn-beijing.volces.com/api/coding/v1",
+    modelExample: "kimi-k2.5",
+  },
 ];
 
 export function getProviderMeta(providerInterface?: ProxyProviderInterface) {

@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { Input, ListBox, ListBoxItem, Select, Switch, TextField } from "@heroui/react";
+import {
+  Input,
+  ListBox,
+  ListBoxItem,
+  Select,
+  Switch,
+  TextField,
+  useOverlayState,
+} from "@heroui/react";
 import type { Key } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -14,6 +22,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useProxyConfigStore, useProxyUIStore } from "../stores";
 import { PROVIDER_LIBRARY } from "../components/config/data";
+import { ProviderPresetModal } from "../components/ProviderPresetModal";
 import type { ProxyProviderInterface } from "@proxy-up/proxy/browser";
 import type { UIProvider } from "../stores/types";
 import { generateUUID } from "../stores/types";
@@ -77,14 +86,20 @@ function ProviderSidebar() {
   const { t } = useTranslation("provider");
   const { config, addProvider, removeProvider } = useProxyConfigStore();
   const { selectedProviderId, setSelectedProvider } = useProxyUIStore();
+  const presetModalState = useOverlayState();
 
-  const handleAdd = () => {
+  const handleAddPreset = (provider: UIProvider) => {
+    addProvider(provider);
+    setSelectedProvider(provider.id);
+  };
+
+  const handleAddCustom = () => {
     const newIndex = config.providers.length;
     const newProvider: UIProvider = {
       id: generateUUID(),
       name: t("newProvider", { index: newIndex + 1, defaultValue: `Provider ${newIndex + 1}` }),
       models: [""],
-      defaultModel: newIndex === 0 ? 0 : undefined, // 第一个 provider 的第一个 model 自动设为 default
+      defaultModel: newIndex === 0 ? 0 : undefined,
     };
     addProvider(newProvider);
     setSelectedProvider(newProvider.id);
@@ -108,38 +123,47 @@ function ProviderSidebar() {
   };
 
   return (
-    <aside className="w-64 shrink-0 bg-secondary flex flex-col">
-      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-          {t("sidebar.heading")}
-        </span>
-        <button
-          type="button"
-          onClick={handleAdd}
-          className="text-gray-500 hover:text-gray-900 hover:bg-surface-tertiary rounded p-1 transition-colors"
-          aria-label={t("aria.addProvider")}
-        >
-          <PlusIcon className="size-4" aria-hidden="true" />
-        </button>
-      </div>
-      <div className="flex-1 overflow-auto py-2 px-2">
-        {config.providers.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-8 px-3 leading-relaxed">
-            {t("sidebar.empty")}
-          </p>
-        ) : (
-          config.providers.map((provider) => (
-            <ProviderItem
-              key={provider.id}
-              provider={provider}
-              isSelected={selectedProviderId === provider.id}
-              onSelect={() => setSelectedProvider(provider.id)}
-              onRemove={() => handleRemove(provider.id)}
-            />
-          ))
-        )}
-      </div>
-    </aside>
+    <>
+      <aside className="w-64 shrink-0 bg-secondary flex flex-col">
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+            {t("sidebar.heading")}
+          </span>
+          <button
+            type="button"
+            onClick={() => presetModalState.open()}
+            className="text-gray-500 hover:text-gray-900 hover:bg-surface-tertiary rounded p-1 transition-colors"
+            aria-label={t("aria.addProvider")}
+          >
+            <PlusIcon className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto py-2 px-2">
+          {config.providers.length === 0 ? (
+            <p className="text-xs text-gray-400 text-center py-8 px-3 leading-relaxed">
+              {t("sidebar.empty")}
+            </p>
+          ) : (
+            config.providers.map((provider) => (
+              <ProviderItem
+                key={provider.id}
+                provider={provider}
+                isSelected={selectedProviderId === provider.id}
+                onSelect={() => setSelectedProvider(provider.id)}
+                onRemove={() => handleRemove(provider.id)}
+              />
+            ))
+          )}
+        </div>
+      </aside>
+      <ProviderPresetModal
+        isOpen={presetModalState.isOpen}
+        onClose={() => presetModalState.close()}
+        onSelectPreset={handleAddPreset}
+        onSelectCustom={handleAddCustom}
+        providerCount={config.providers.length}
+      />
+    </>
   );
 }
 

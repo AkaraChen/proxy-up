@@ -93,6 +93,8 @@ interface Resources {
     "panel.defaultDescription": "Configure the settings for this provider.";
     "panel.unselected.primary": "Select a provider to configure it,";
     "panel.unselected.secondary": "or click + to add a new one.";
+    "preset.skip": "Custom Configuration";
+    "preset.title": "Select Provider Template";
     "sidebar.empty": "No providers yet.\nClick + to add one.";
     "sidebar.heading": "Providers";
   };
