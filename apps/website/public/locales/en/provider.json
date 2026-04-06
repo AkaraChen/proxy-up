@@ -43,6 +43,5 @@
   "aria.unsetAsDefault": "Unset as default model",
   "newProvider": "Provider {{index}}",
   "preset.title": "Select Provider Template",
-  "preset.skip": "Custom Configuration",
-  "preset.modelExample": "Model example"
+  "preset.skip": "Custom Configuration"
 }
