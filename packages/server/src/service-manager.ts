@@ -48,7 +48,7 @@ export async function startProxyService(config: ProxyConfig): Promise<ProxyGatew
     workDir,
   };
 
-const gateway = new ProxyGateway(gatewayOptions);
+  const gateway = new ProxyGateway(gatewayOptions);
   await gateway.start();
   gatewayManager.setGateway(gateway);
 

@@ -21,6 +21,6 @@ const runtime = ManagedRuntime.make(ProxyPlatformLive);
  * Uses ManagedRuntime to properly handle Layer lifecycle and error types.
  * Layer build errors (e.g., ConfigError) are thrown as exceptions.
  */
-export function runProxyEffect<A, E, R>(effect: Effect.Effect<A, E, R>) {
-  return runtime.runPromise(effect);
+export function runProxyEffect<A, E, R>(effect: Effect.Effect<A, E, R>): Promise<A> {
+  return runtime.runPromise(effect as Effect.Effect<A, E, never>);
 }
