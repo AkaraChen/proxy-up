@@ -9,12 +9,11 @@ export function AppInitializer({ children }: AppInitializerProps) {
   const initConfig = useInitConfig();
   const initStatus = useInitStatus();
 
+  // React Query mutation functions are stable references, safe to include in deps
   useEffect(() => {
-    // Only run once on mount
     initConfig.mutate();
     initStatus.mutate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initConfig.mutate, initStatus.mutate]);
 
   // Wait for initialization to complete
   if (initConfig.isPending || initStatus.isPending) {

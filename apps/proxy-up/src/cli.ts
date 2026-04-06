@@ -32,8 +32,9 @@ app.notFound((c) => {
   try {
     const indexHtml = readFileSync(indexPath, "utf-8");
     return c.html(indexHtml);
-  } catch {
-    return c.text("Frontend not built. Run 'pnpm run build' first.", 500);
+  } catch (error) {
+    console.error(`Failed to read ${indexPath}:`, error);
+    return c.text("Frontend not built or inaccessible. Check build and file permissions.", 500);
   }
 });
 
@@ -47,12 +48,29 @@ ensureDefaultConfig()
 
     console.log(`✨ Proxy Up is running at http://localhost:${PORT}`);
 
-    // Open browser
-    setTimeout(() => {
-      open(`http://localhost:${PORT}`).catch((err) => {
-        console.warn("Could not open browser:", err.message);
-      });
-    }, 1000);
+    // Wait for server to be ready before opening browser
+    const waitForServer = async (maxAttempts = 10) => {
+      for (let i = 0; i < maxAttempts; i++) {
+        try {
+          const response = await fetch(`http://localhost:${PORT}/healthz`);
+          if (response.ok) return true;
+        } catch {
+          // Server not ready yet
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      return false;
+    };
+
+    void waitForServer().then((ready) => {
+      if (ready) {
+        open(`http://localhost:${PORT}`).catch((err) => {
+          console.warn("Could not open browser:", err.message);
+        });
+      } else {
+        console.warn("Server did not become ready in time, skipping browser open");
+      }
+    });
 
     // Graceful shutdown
     const shutdown = async (signal: string) => {

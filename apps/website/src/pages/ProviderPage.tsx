@@ -268,7 +268,15 @@ function ProviderPanel() {
     );
   }
 
-  const provider = config.providers.find((p) => p.id === selectedProviderId)!;
+  const provider = config.providers.find((p) => p.id === selectedProviderId);
+  if (!provider) {
+    // This should never happen due to earlier check, but handle gracefully
+    return (
+      <div className="flex-1 flex items-center justify-center text-gray-400">
+        <p className="text-sm">{t("panel.unselected.primary")}</p>
+      </div>
+    );
+  }
 
   const update = (patch: Partial<UIProvider>) => {
     updateProvider(provider.id, patch);

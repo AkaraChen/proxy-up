@@ -21,6 +21,29 @@ import type {
   ResolvedProxyPorts,
 } from "./types.js";
 
+// Type guard for builtin provider interfaces
+const BUILTIN_PROVIDER_INTERFACES: readonly ProxyProviderInterface[] = [
+  "amazon_bedrock",
+  "anthropic",
+  "azure_openai",
+  "deepseek",
+  "gemini",
+  "groq",
+  "mistral",
+  "moonshotai",
+  "ollama",
+  "openai",
+  "plano",
+  "qwen",
+  "together_ai",
+  "xai",
+  "zhipu",
+];
+
+function isBuiltinProviderInterface(value: string): value is ProxyProviderInterface {
+  return BUILTIN_PROVIDER_INTERFACES.includes(value as ProxyProviderInterface);
+}
+
 interface EnvoyConfigBuildOptions {
   brightstaffHost: string;
   gatewayHost: string;
@@ -246,7 +269,15 @@ function buildProviderClusters(providers: NormalizedProxyProvider[], trustedCaPa
             port: provider.endpointPort,
             protocol: provider.endpointProtocol,
           }
-        : getBuiltinProviderEndpoint(provider.providerInterface as ProxyProviderInterface);
+        : (() => {
+            const providerInterface = provider.providerInterface;
+            if (!isBuiltinProviderInterface(providerInterface)) {
+              throw new Error(
+                `Unknown provider interface "${String(providerInterface)}" for provider "${provider.name}".`,
+              );
+            }
+            return getBuiltinProviderEndpoint(providerInterface);
+          })();
 
     if (!endpoint) {
       throw new Error(

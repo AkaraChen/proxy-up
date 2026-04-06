@@ -36,7 +36,11 @@ const wireProcessToLogEffect = (
     const forkLogDrain = (stream: Stream.Stream<Uint8Array, unknown>) =>
       Effect.forkScoped(
         Stream.run(stream, fileSystem.sink(logPath, { flag: "a" })).pipe(
-          Effect.catchAll(() => Effect.void),
+          Effect.catchAll((error) =>
+            Effect.logError(`Failed to drain log to ${logPath}: ${asError(error).message}`).pipe(
+              Effect.asVoid,
+            ),
+          ),
         ),
       ).pipe(Scope.extend(scope));
 
@@ -49,7 +53,9 @@ const wireProcessToLogEffect = (
             flag: "a",
           }),
         ),
-        Effect.catchAll(() => Effect.void),
+        Effect.catchAll((error) =>
+          Effect.logError(`Failed to write exit log for ${processName}: ${asError(error).message}`),
+        ),
       ),
     ).pipe(Scope.extend(scope));
   });
