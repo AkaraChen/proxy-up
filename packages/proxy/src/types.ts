@@ -1,68 +1,18 @@
-export type ProxyProviderInterface =
-  | "amazon_bedrock"
-  | "anthropic"
-  | "azure_openai"
-  | "deepseek"
-  | "gemini"
-  | "groq"
-  | "mistral"
-  | "moonshotai"
-  | "ollama"
-  | "openai"
-  | "plano"
-  | "qwen"
-  | "together_ai"
-  | "xai"
-  | "zhipu";
+// Types are now exported from schema.ts via zod inference
+// This file re-exports types for backward compatibility
 
-export type ProxyLogLevel = "trace" | "debug" | "info" | "warn" | "error";
+export type {
+  ProxyProviderInterface,
+  ProxyLogLevel,
+  ProxyProviderOptions,
+  ProxyPorts,
+  ProxyModelAlias,
+  ProxyModelAliases,
+  ProxyArtifactOptions,
+  ProxyGatewayOptions,
+} from "./schema.js";
 
-export interface ProxyProviderOptions {
-  apiKey?: string;
-  baseUrl?: string;
-  default?: boolean;
-  model: string;
-  name?: string;
-  passthroughAuth?: boolean;
-  provider?: string;
-  providerInterface?: ProxyProviderInterface;
-}
-
-export interface ProxyModelAlias {
-  target: string;
-}
-
-export type ProxyModelAliases = Record<string, string | ProxyModelAlias>;
-
-export interface ProxyArtifactOptions {
-  brightstaffPath?: string;
-  cacheDir?: string;
-  envoyPath?: string;
-  envoyReleaseBaseUrl?: string;
-  envoyVersion?: string;
-  llmGatewayWasmPath?: string;
-  planoReleaseBaseUrl?: string;
-  planoVersion?: string;
-}
-
-export interface ProxyPorts {
-  admin?: number;
-  brightstaff?: number;
-  gateway?: number;
-  internal?: number;
-}
-
-export interface ProxyGatewayOptions {
-  artifacts?: ProxyArtifactOptions;
-  cleanupOnStop?: boolean;
-  gatewayHost?: string;
-  logLevel?: ProxyLogLevel;
-  modelAliases?: ProxyModelAliases;
-  ports?: ProxyPorts;
-  providers: ProxyProviderOptions[];
-  workDir?: string;
-}
-
+// Runtime-specific types not covered by zod schemas
 export interface NormalizedProxyProvider {
   accessKey?: string;
   baseUrl?: string;
@@ -76,7 +26,7 @@ export interface NormalizedProxyProvider {
   name: string;
   passthroughAuth?: boolean;
   provider: string;
-  providerInterface: ProxyProviderInterface;
+  providerInterface: import("./schema.js").ProxyProviderInterface;
 }
 
 export interface ResolvedProxyArtifacts {
@@ -100,7 +50,7 @@ export interface GeneratedProxyConfig {
   envoyConfig: string;
   gatewayUrl: string;
   internalUrl: string;
-  modelAliases: Record<string, ProxyModelAlias>;
+  modelAliases: Record<string, import("./schema.js").ProxyModelAlias>;
   normalizedProviders: NormalizedProxyProvider[];
   planoConfig: string;
   ports: ResolvedProxyPorts;

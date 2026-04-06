@@ -1,10 +1,12 @@
+/* eslint-disable @typescript-eslint/no-this-alias */
 import { Command, CommandExecutor, FileSystem, HttpClient, Path } from "@effect/platform";
 import { Effect, Scope, Stream } from "effect";
 
 import { ensureProxyArtifactsEffect } from "./assets.js";
 import { DEFAULT_GATEWAY_HOST, DEFAULT_INTERNAL_HOST, DEFAULT_LOG_LEVEL } from "./constants.js";
-import { generateGatewayConfig } from "./config.js";
+import { generateGatewayConfigCore } from "./config-core.js";
 import { runProxyEffect } from "./effect-runtime.js";
+import { getDefaultTrustedCaPath } from "./runtime-defaults.js";
 import {
   assertPortAvailableEffect,
   closeScopeQuietlyEffect,
@@ -178,217 +180,241 @@ const waitUntilReadyEffect = (args: {
     }
   });
 
-const createProxyGatewayEffect = (options: ProxyGatewayOptions) =>
-  Effect.gen(function* () {
-    const fileSystem = yield* FileSystem.FileSystem;
-    const path = yield* Path.Path;
-    const artifacts = yield* ensureProxyArtifactsEffect(options.artifacts);
-    const generatedConfig = generateGatewayConfig({
-      ...options,
-      artifacts: {
-        ...options.artifacts,
-        llmGatewayWasmPath: artifacts.llmGatewayWasmPath,
-      },
-    });
+const validatePortsEffect = (
+  ports: {
+    admin: number;
+    brightstaff: number;
+    gateway: number;
+    internal: number;
+  },
+  gatewayHost: string,
+) =>
+  Effect.forEach(
+    [
+      assertPortAvailableEffect(ports.gateway, gatewayHost, "gateway listener"),
+      assertPortAvailableEffect(ports.internal, DEFAULT_INTERNAL_HOST, "internal Envoy listener"),
+      assertPortAvailableEffect(ports.admin, DEFAULT_INTERNAL_HOST, "Envoy admin listener"),
+      assertPortAvailableEffect(ports.brightstaff, DEFAULT_INTERNAL_HOST, "brightstaff listener"),
+    ],
+    (effect) => effect,
+    { discard: true },
+  );
 
-    const workDir =
-      options.workDir ??
-      (yield* fileSystem.makeTempDirectory({
-        prefix: "proxy-up-gateway-",
-      }));
-    const logsDir = path.join(workDir, "logs");
-    const planoConfigPath = path.join(workDir, "plano_config_rendered.yaml");
-    const envoyConfigPath = path.join(workDir, "envoy.yaml");
-    const brightstaffLogPath = path.join(logsDir, "brightstaff.log");
-    const envoyLogPath = path.join(logsDir, "envoy.log");
+/**
+ * ProxyGateway manages the lifecycle of a proxy gateway instance.
+ *
+ * Usage:
+ * ```typescript
+ * const gateway = new ProxyGateway(options);
+ * await gateway.start();
+ * // gateway is now running at gateway.gatewayUrl
+ * await gateway.stop();
+ * ```
+ */
+export class ProxyGateway {
+  readonly #options: ProxyGatewayOptions;
+  readonly #cleanupOnStop: boolean;
 
-    yield* fileSystem.makeDirectory(logsDir, {
-      recursive: true,
-    });
-    yield* fileSystem.writeFileString(planoConfigPath, generatedConfig.planoConfig, {
-      flag: "w",
-    });
-    yield* fileSystem.writeFileString(envoyConfigPath, generatedConfig.envoyConfig, {
-      flag: "w",
-    });
+  #artifacts?: ResolvedProxyArtifacts;
+  #brightstaff?: ManagedProcess;
+  #envoy?: ManagedProcess;
+  #generatedConfig?: GeneratedProxyConfig;
+  #paths?: ProxyGatewayPaths;
+  #running = false;
 
-    return new ProxyGateway({
-      artifacts,
-      cleanupOnStop: options.cleanupOnStop ?? false,
-      generatedConfig,
-      gatewayHost: options.gatewayHost ?? DEFAULT_GATEWAY_HOST,
-      logLevel: options.logLevel ?? DEFAULT_LOG_LEVEL,
-      paths: {
+  constructor(options: ProxyGatewayOptions) {
+    this.#options = options;
+    this.#cleanupOnStop = options.cleanupOnStop ?? false;
+  }
+
+  /**
+   * The URL where the gateway is accessible (e.g., "http://127.0.0.1:8080")
+   * Only available after start() succeeds.
+   */
+  get gatewayUrl(): string {
+    if (!this.#generatedConfig) {
+      throw new Error("Gateway URL is not available until the gateway is started.");
+    }
+    return this.#generatedConfig.gatewayUrl;
+  }
+
+  /**
+   * Whether the gateway is currently running.
+   */
+  get isRunning(): boolean {
+    return this.#running;
+  }
+
+  /**
+   * The resolved artifacts (binary paths, wasm paths, versions).
+   * Only available after start() succeeds.
+   */
+  get artifacts(): ResolvedProxyArtifacts {
+    if (!this.#artifacts) {
+      throw new Error("Artifacts are not available until the gateway is started.");
+    }
+    return this.#artifacts;
+  }
+
+  /**
+   * The generated configuration files and paths.
+   * Only available after start() succeeds.
+   */
+  get paths(): ProxyGatewayPaths {
+    if (!this.#paths) {
+      throw new Error("Paths are not available until the gateway is started.");
+    }
+    return this.#paths;
+  }
+
+  readonly #startEffect = () => {
+    const self = this;
+    return Effect.gen(function* () {
+      const fileSystem = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+
+      // Ensure artifacts are available
+      const artifacts = yield* ensureProxyArtifactsEffect(self.#options.artifacts);
+
+      // Generate config (includes all validation)
+      const generatedConfig = generateGatewayConfigCore(self.#options, getDefaultTrustedCaPath());
+
+      // Setup working directory
+      const workDir =
+        self.#options.workDir ??
+        (yield* fileSystem.makeTempDirectory({ prefix: "proxy-up-gateway-" }));
+
+      const logsDir = path.join(workDir, "logs");
+      const planoConfigPath = path.join(workDir, "plano_config_rendered.yaml");
+      const envoyConfigPath = path.join(workDir, "envoy.yaml");
+      const brightstaffLogPath = path.join(logsDir, "brightstaff.log");
+      const envoyLogPath = path.join(logsDir, "envoy.log");
+
+      yield* fileSystem.makeDirectory(logsDir, { recursive: true });
+      yield* fileSystem.writeFileString(planoConfigPath, generatedConfig.planoConfig, {
+        flag: "w",
+      });
+      yield* fileSystem.writeFileString(envoyConfigPath, generatedConfig.envoyConfig, {
+        flag: "w",
+      });
+
+      // Store resolved data
+      self.#artifacts = artifacts;
+      self.#generatedConfig = generatedConfig;
+      self.#paths = {
         brightstaffLogPath,
         envoyConfigPath,
         envoyLogPath,
         logsDir,
         planoConfigPath,
         workDir,
-      },
-    });
-  });
+      };
 
-export async function findAvailablePort(host = DEFAULT_INTERNAL_HOST) {
-  return runProxyEffect(findAvailablePortEffect(host));
-}
+      // Validate ports are available
+      yield* validatePortsEffect(
+        generatedConfig.ports,
+        self.#options.gatewayHost ?? DEFAULT_GATEWAY_HOST,
+      );
 
-export class ProxyGateway {
-  readonly artifacts: ResolvedProxyArtifacts;
-  readonly generatedConfig: GeneratedProxyConfig;
-  readonly paths: ProxyGatewayPaths;
-
-  #brightstaff?: ManagedProcess;
-  #cleanupOnStop: boolean;
-  #envoy?: ManagedProcess;
-  #gatewayHost: string;
-  #logLevel: string;
-  #running = false;
-
-  constructor(args: {
-    artifacts: ResolvedProxyArtifacts;
-    cleanupOnStop: boolean;
-    generatedConfig: GeneratedProxyConfig;
-    gatewayHost: string;
-    logLevel: string;
-    paths: ProxyGatewayPaths;
-  }) {
-    this.artifacts = args.artifacts;
-    this.generatedConfig = args.generatedConfig;
-    this.paths = args.paths;
-    this.#cleanupOnStop = args.cleanupOnStop;
-    this.#gatewayHost = args.gatewayHost;
-    this.#logLevel = args.logLevel;
-  }
-
-  get gatewayUrl() {
-    return this.generatedConfig.gatewayUrl;
-  }
-
-  get isRunning() {
-    return this.#running;
-  }
-
-  #startEffect() {
-    return Effect.forEach(
-      [
-        assertPortAvailableEffect(
-          this.generatedConfig.ports.gateway,
-          this.#gatewayHost,
-          "gateway listener",
+      // Start brightstaff
+      const brightstaff = yield* startManagedProcessEffect({
+        command: Command.make(artifacts.brightstaffPath).pipe(
+          Command.env({
+            BIND_ADDRESS: `${DEFAULT_INTERNAL_HOST}:${generatedConfig.ports.brightstaff}`,
+            LLM_PROVIDER_ENDPOINT: generatedConfig.internalUrl,
+            PLANO_CONFIG_PATH_RENDERED: planoConfigPath,
+            RUST_LOG: self.#options.logLevel ?? DEFAULT_LOG_LEVEL,
+          }),
         ),
-        assertPortAvailableEffect(
-          this.generatedConfig.ports.internal,
-          DEFAULT_INTERNAL_HOST,
-          "internal Envoy listener",
-        ),
-        assertPortAvailableEffect(
-          this.generatedConfig.ports.admin,
-          DEFAULT_INTERNAL_HOST,
-          "Envoy admin listener",
-        ),
-        assertPortAvailableEffect(
-          this.generatedConfig.ports.brightstaff,
-          DEFAULT_INTERNAL_HOST,
-          "brightstaff listener",
-        ),
-      ],
-      (effect) => effect,
-      {
-        discard: true,
-      },
-    ).pipe(
-      Effect.flatMap(() =>
-        startManagedProcessEffect({
-          command: Command.make(this.artifacts.brightstaffPath).pipe(
-            Command.env({
-              BIND_ADDRESS: `${DEFAULT_INTERNAL_HOST}:${this.generatedConfig.ports.brightstaff}`,
-              LLM_PROVIDER_ENDPOINT: this.generatedConfig.internalUrl,
-              PLANO_CONFIG_PATH_RENDERED: this.paths.planoConfigPath,
-              RUST_LOG: this.#logLevel,
-            }),
-          ),
-          logPath: this.paths.brightstaffLogPath,
-          processName: "brightstaff",
-        }).pipe(
-          Effect.tap((brightstaff) =>
-            Effect.sync(() => {
-              this.#brightstaff = brightstaff;
-            }),
-          ),
-        ),
-      ),
-      Effect.flatMap((brightstaff) =>
-        startManagedProcessEffect({
-          command: Command.make(
-            this.artifacts.envoyPath,
-            "-c",
-            this.paths.envoyConfigPath,
-            "--component-log-level",
-            `wasm:${this.#logLevel}`,
-            "--log-format",
-            "[%Y-%m-%d %T.%e][%l] %v",
-          ),
-          logPath: this.paths.envoyLogPath,
-          processName: "Envoy",
-        }).pipe(
-          Effect.tap((envoy) =>
-            Effect.sync(() => {
-              this.#envoy = envoy;
-            }),
-          ),
-          Effect.flatMap((envoy) =>
-            waitUntilReadyEffect({
-              brightstaff,
-              brightstaffLogPath: this.paths.brightstaffLogPath,
-              envoy,
-              envoyLogPath: this.paths.envoyLogPath,
-              gatewayUrl: this.gatewayUrl,
-              workDir: this.paths.workDir,
-            }),
-          ),
-        ),
-      ),
-    );
-  }
-
-  #stopEffect(cleanup: boolean) {
-    const errors: Error[] = [];
-    const recordErrorEffect = (error: unknown) =>
-      Effect.sync(() => {
-        errors.push(asError(error));
+        logPath: brightstaffLogPath,
+        processName: "brightstaff",
       });
-    const cleanupEffect = cleanup
-      ? FileSystem.FileSystem.pipe(
-          Effect.flatMap((fileSystem) =>
-            fileSystem.remove(this.paths.workDir, {
-              force: true,
-              recursive: true,
-            }),
-          ),
-        )
-      : Effect.void;
+      self.#brightstaff = brightstaff;
 
-    return stopManagedProcessEffect("envoy", this.#envoy).pipe(
-      Effect.catchAll(recordErrorEffect),
-      Effect.zipRight(
-        stopManagedProcessEffect("brightstaff", this.#brightstaff).pipe(
-          Effect.catchAll(recordErrorEffect),
+      // Start envoy
+      const envoy = yield* startManagedProcessEffect({
+        command: Command.make(
+          artifacts.envoyPath,
+          "-c",
+          envoyConfigPath,
+          "--component-log-level",
+          `wasm:${self.#options.logLevel ?? DEFAULT_LOG_LEVEL}`,
+          "--log-format",
+          "[%Y-%m-%d %T.%e][%l] %v",
         ),
-      ),
-      Effect.zipRight(cleanupEffect),
-      Effect.flatMap(() => (errors.length > 0 ? Effect.fail(errors[0]!) : Effect.void)),
-    );
-  }
+        logPath: envoyLogPath,
+        processName: "Envoy",
+      });
+      self.#envoy = envoy;
 
-  async start() {
+      // Wait until ready
+      yield* waitUntilReadyEffect({
+        brightstaff,
+        brightstaffLogPath,
+        envoy,
+        envoyLogPath,
+        gatewayUrl: generatedConfig.gatewayUrl,
+        workDir,
+      });
+
+      self.#running = true;
+    });
+  };
+
+  readonly #stopEffect = (cleanup: boolean) => {
+    const self = this;
+    return Effect.gen(function* () {
+      const errors: Error[] = [];
+      const recordErrorEffect = (error: unknown) =>
+        Effect.sync(() => {
+          errors.push(asError(error));
+        });
+      const cleanupEffect = cleanup
+        ? FileSystem.FileSystem.pipe(
+            Effect.flatMap((fileSystem) =>
+              fileSystem.remove(self.#paths?.workDir ?? "", {
+                force: true,
+                recursive: true,
+              }),
+            ),
+          )
+        : Effect.void;
+
+      yield* stopManagedProcessEffect("envoy", self.#envoy).pipe(
+        Effect.catchAll(recordErrorEffect),
+      );
+      yield* stopManagedProcessEffect("brightstaff", self.#brightstaff).pipe(
+        Effect.catchAll(recordErrorEffect),
+      );
+      yield* cleanupEffect;
+
+      if (errors.length > 0) {
+        yield* Effect.fail(errors[0]!);
+      }
+    });
+  };
+
+  /**
+   * Start the proxy gateway.
+   *
+   * This will:
+   * 1. Validate all configuration (providers, ports, model aliases)
+   * 2. Download necessary artifacts (envoy, brightstaff, wasm) if not provided
+   * 3. Generate configuration files
+   * 4. Start the envoy and brightstaff processes
+   * 5. Wait until the gateway is ready to accept requests
+   *
+   * If already running, returns immediately.
+   *
+   * @throws Error if validation fails, artifacts can't be downloaded, or processes fail to start
+   */
+  async start(): Promise<this> {
     if (this.#running) {
       return this;
     }
 
     try {
       await runProxyEffect(this.#startEffect());
-      this.#running = true;
       return this;
     } catch (error) {
       await this.stop(false).catch(() => undefined);
@@ -396,9 +422,16 @@ export class ProxyGateway {
     }
   }
 
-  async stop(cleanup = this.#cleanupOnStop) {
+  /**
+   * Stop the proxy gateway.
+   *
+   * @param cleanup - Whether to remove the working directory (defaults to cleanupOnStop option)
+   */
+  async stop(cleanup = this.#cleanupOnStop): Promise<void> {
     try {
-      await runProxyEffect(this.#stopEffect(cleanup));
+      if (this.#running) {
+        await runProxyEffect(this.#stopEffect(cleanup));
+      }
     } finally {
       this.#brightstaff = undefined;
       this.#envoy = undefined;
@@ -407,12 +440,25 @@ export class ProxyGateway {
   }
 }
 
-export async function createProxyGateway(options: ProxyGatewayOptions) {
-  return runProxyEffect(createProxyGatewayEffect(options));
+/**
+ * Find an available port on the given host.
+ * Useful for dynamically allocating ports before creating a ProxyGateway.
+ */
+export async function findAvailablePort(host = DEFAULT_INTERNAL_HOST): Promise<number> {
+  return runProxyEffect(findAvailablePortEffect(host));
 }
 
-export async function startProxyGateway(options: ProxyGatewayOptions) {
-  const gateway = await createProxyGateway(options);
+/**
+ * Convenience function to create and start a ProxyGateway in one step.
+ *
+ * Equivalent to:
+ * ```typescript
+ * const gateway = new ProxyGateway(options);
+ * await gateway.start();
+ * ```
+ */
+export async function startProxyGateway(options: ProxyGatewayOptions): Promise<ProxyGateway> {
+  const gateway = new ProxyGateway(options);
   await gateway.start();
   return gateway;
 }

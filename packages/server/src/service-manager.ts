@@ -1,4 +1,4 @@
-import { startProxyGateway, ProxyGateway, type ProxyGatewayOptions } from "@proxy-up/proxy";
+import { ProxyGateway, type ProxyGatewayOptions } from "@proxy-up/proxy";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { ProxyConfig, ProxyStatus } from "./config-manager.js";
@@ -48,7 +48,8 @@ export async function startProxyService(config: ProxyConfig): Promise<ProxyGatew
     workDir,
   };
 
-  const gateway = await startProxyGateway(gatewayOptions);
+const gateway = new ProxyGateway(gatewayOptions);
+  await gateway.start();
   gatewayManager.setGateway(gateway);
 
   await saveCurrentStatus({

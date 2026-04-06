@@ -1,4 +1,38 @@
-export { ensureProxyArtifacts } from "./assets.js";
+// High-level API
+export { ProxyGateway, findAvailablePort, startProxyGateway } from "./runtime.js";
+
+// Zod schemas
+export {
+  ProxyProviderInterfaceSchema,
+  ProxyLogLevelSchema,
+  ProxyProviderOptionsSchema,
+  ProxyPortsSchema,
+  ProxyModelAliasSchema,
+  ProxyModelAliasesSchema,
+  ProxyArtifactOptionsSchema,
+  ProxyGatewayOptionsSchema,
+  providerRequiresBaseUrl,
+  PROVIDER_DEFINITIONS,
+} from "./schema.js";
+
+// Types
+export type {
+  ProxyProviderInterface,
+  ProxyLogLevel,
+  ProxyProviderOptions,
+  ProxyPorts,
+  ProxyModelAlias,
+  ProxyModelAliases,
+  ProxyArtifactOptions,
+  ProxyGatewayOptions,
+  NormalizedProxyProvider,
+  ResolvedProxyArtifacts,
+  ResolvedProxyPorts,
+  GeneratedProxyConfig,
+  ProxyGatewayPaths,
+} from "./types.js";
+
+// Constants
 export {
   BUILTIN_PROVIDER_ENDPOINTS,
   DEFAULT_ADMIN_PORT,
@@ -14,25 +48,11 @@ export {
   DEFAULT_PLANO_VERSION,
 } from "./constants.js";
 export type { BuiltinProviderEndpoint } from "./constants.js";
-export { DEFAULT_CACHE_DIR, getDefaultTrustedCaPath } from "./runtime-defaults.js";
+export { DEFAULT_CACHE_DIR } from "./runtime-defaults.js";
+
+// Config generation
 export { generateGatewayConfig } from "./config.js";
-export {
-  createProxyGateway,
-  findAvailablePort,
-  ProxyGateway,
-  startProxyGateway,
-} from "./runtime.js";
-export type {
-  GeneratedProxyConfig,
-  NormalizedProxyProvider,
-  ProxyArtifactOptions,
-  ProxyGatewayOptions,
-  ProxyLogLevel,
-  ProxyModelAlias,
-  ProxyModelAliases,
-  ProxyPorts,
-  ProxyProviderInterface,
-  ProxyProviderOptions,
-  ResolvedProxyArtifacts,
-  ResolvedProxyPorts,
-} from "./types.js";
+export { getDefaultTrustedCaPath } from "./runtime-defaults.js";
+
+// Low-level
+export { ensureProxyArtifacts } from "./assets.js";
