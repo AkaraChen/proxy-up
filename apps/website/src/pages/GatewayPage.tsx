@@ -7,6 +7,11 @@ import { DEFAULT_GATEWAY_HOST, DEFAULT_GATEWAY_PORT } from "@proxy-up/proxy/brow
 import type { ProxyLogLevel } from "@proxy-up/proxy/browser";
 import { SectionHeading, SettingsContainer, SettingRow } from "../components/common";
 
+const VALID_LOG_LEVELS = ["trace", "debug", "info", "warn", "error"] as const;
+function isLogLevel(value: string): value is ProxyLogLevel {
+  return VALID_LOG_LEVELS.includes(value as ProxyLogLevel);
+}
+
 function GatewayPage() {
   const { t } = useTranslation("gateway");
   const {
@@ -70,9 +75,14 @@ function GatewayPage() {
           <Select
             variant="secondary"
             selectedKey={logLevel}
-            onSelectionChange={(key: Key | null) =>
-              key != null && updateLogLevel(key as ProxyLogLevel)
-            }
+            onSelectionChange={(key: Key | null) => {
+              if (key != null) {
+                const level = String(key);
+                if (isLogLevel(level)) {
+                  updateLogLevel(level);
+                }
+              }
+            }}
           >
             <Select.Trigger className="w-32">
               <Select.Value />
