@@ -1,4 +1,4 @@
-import { Button, Chip, Modal } from "@heroui/react";
+import { Button, Modal } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 import { PROVIDER_PRESETS } from "./config/data";
 import type { ProviderPreset } from "./config/types";
@@ -14,23 +14,13 @@ interface ProviderPresetModalProps {
 }
 
 function PresetCard({ preset, onSelect }: { preset: ProviderPreset; onSelect: () => void }) {
-  const { t } = useTranslation("provider");
-
   return (
     <button
       type="button"
       onClick={onSelect}
-      className="flex flex-col gap-2 p-4 rounded-xl bg-surface border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all text-left"
+      className="px-4 py-3 rounded-lg bg-surface border border-gray-100 hover:border-gray-200 hover:bg-surface-secondary transition-all text-left"
     >
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-gray-900">{preset.label}</span>
-        <Chip size="sm" variant="secondary">
-          {preset.providerInterface}
-        </Chip>
-      </div>
-      <p className="text-xs text-gray-400">
-        {t("preset.modelExample")}: <span className="font-mono">{preset.modelExample}</span>
-      </p>
+      <span className="text-sm font-medium text-gray-900">{preset.label}</span>
     </button>
   );
 }
