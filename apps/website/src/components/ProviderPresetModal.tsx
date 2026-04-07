@@ -1,16 +1,15 @@
 import { Button, Modal } from "@heroui/react";
 import { useTranslation } from "react-i18next";
-import { PROVIDER_PRESETS } from "./config/data";
 import type { ProviderPreset } from "./config/types";
 import type { UIProvider } from "../stores/types";
 import { generateUUID } from "../stores/types";
+import { useProviderRegistry } from "../api/registry";
 
 interface ProviderPresetModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectPreset: (provider: UIProvider) => void;
   onSelectCustom: () => void;
-  providerCount: number;
 }
 
 function PresetCard({ preset, onSelect }: { preset: ProviderPreset; onSelect: () => void }) {
@@ -30,14 +29,14 @@ export function ProviderPresetModal({
   onClose,
   onSelectPreset,
   onSelectCustom,
-  providerCount,
 }: ProviderPresetModalProps) {
   const { t } = useTranslation("provider");
+  const { data: presets = [] } = useProviderRegistry();
 
   const handleSelectPreset = (preset: ProviderPreset) => {
     const newProvider: UIProvider = {
       id: generateUUID(),
-      name: `${preset.label} ${providerCount + 1}`,
+      name: `${preset.label}`,
       providerInterface: preset.providerInterface,
       baseUrl: preset.baseUrl,
       models: [preset.modelExample],
@@ -61,7 +60,7 @@ export function ProviderPresetModal({
           </Modal.Header>
           <Modal.Body>
             <div className="flex flex-col gap-3">
-              {PROVIDER_PRESETS.map((preset) => (
+              {presets.map((preset) => (
                 <PresetCard
                   key={preset.label}
                   preset={preset}
