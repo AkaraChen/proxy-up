@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
+import type { ProxyConfig } from "../lib/proxy";
 import { useProxyConfigStore, useProxyUIStore } from "../stores";
 import { transformOptionsToUIProviders } from "../stores/transform";
-import type { ProxyConfig } from "@proxy-up/server";
 
 // Query keys for cache management
 export const queryKeys = {

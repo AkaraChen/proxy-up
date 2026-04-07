@@ -1,4 +1,4 @@
-import type { ProxyProviderInterface, ProxyProviderOptions } from "@proxy-up/proxy/browser";
+import type { ProxyProviderInterface, ProxyProviderOptions } from "../lib/proxy";
 import type { UIProvider } from "./types";
 import { generateUUID } from "./types";
 

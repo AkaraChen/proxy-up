@@ -3,8 +3,8 @@ import type { Key } from "react";
 import { useTranslation } from "react-i18next";
 import { useProxyConfigStore } from "../stores";
 import { LOG_LEVEL_OPTIONS } from "../components/config/data";
-import { DEFAULT_GATEWAY_HOST, DEFAULT_GATEWAY_PORT } from "@proxy-up/proxy/browser";
-import type { ProxyLogLevel } from "@proxy-up/proxy/browser";
+import { DEFAULT_GATEWAY_HOST, DEFAULT_GATEWAY_PORT } from "../lib/proxy";
+import type { ProxyLogLevel } from "../lib/proxy";
 import { SectionHeading, SettingsContainer, SettingRow } from "../components/common";
 
 const VALID_LOG_LEVELS = ["trace", "debug", "info", "warn", "error"] as const;

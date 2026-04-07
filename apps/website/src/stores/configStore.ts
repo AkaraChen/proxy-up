@@ -1,23 +1,23 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import type {
-  ProxyPorts,
+  ProxyArtifactOptions,
   ProxyLogLevel,
   ProxyModelAliases,
-  ProxyArtifactOptions,
+  ProxyPorts,
   ProxyProviderOptions,
-} from "@proxy-up/proxy/browser";
+} from "../lib/proxy";
 import {
+  DEFAULT_ADMIN_PORT,
+  DEFAULT_BRIGHTSTAFF_PORT,
+  DEFAULT_CACHE_DIR,
+  DEFAULT_ENVOY_VERSION,
   DEFAULT_GATEWAY_HOST,
   DEFAULT_GATEWAY_PORT,
   DEFAULT_INTERNAL_PORT,
-  DEFAULT_BRIGHTSTAFF_PORT,
-  DEFAULT_ADMIN_PORT,
   DEFAULT_LOG_LEVEL,
   DEFAULT_PLANO_VERSION,
-  DEFAULT_ENVOY_VERSION,
-  DEFAULT_CACHE_DIR,
-} from "@proxy-up/proxy/browser";
+} from "../lib/proxy";
 import type { UIProvider, UIConfig } from "./types";
 import { transformUIProvidersToOptions } from "./transform";
 

@@ -1,4 +1,4 @@
-import type { ProxyProviderInterface } from "@proxy-up/proxy/browser";
+import type { ProxyProviderInterface } from "../../lib/proxy";
 
 export type AliasEntry = {
   name: string;

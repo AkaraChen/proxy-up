@@ -1,8 +1,4 @@
-import type {
-  ProxyLogLevel,
-  ProxyProviderInterface,
-  ProxyProviderOptions,
-} from "@proxy-up/proxy/browser";
+import type { ProxyLogLevel, ProxyProviderInterface, ProxyProviderOptions } from "../../lib/proxy";
 
 import type { ProviderMeta, ProviderPreset } from "./types";
 

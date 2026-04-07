@@ -1,4 +1,4 @@
-import type { ProxyProviderInterface } from "@proxy-up/proxy/browser";
+import type { ProxyProviderInterface } from "../lib/proxy";
 
 /**
  * UI 层面的 Provider 数据结构，支持多个 model

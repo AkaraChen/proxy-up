@@ -22,7 +22,7 @@ import {
 import { useProxyConfigStore, useProxyUIStore } from "../stores";
 import { PROVIDER_LIBRARY } from "../components/config/data";
 import { ProviderPresetModal } from "../components/ProviderPresetModal";
-import type { ProxyProviderInterface } from "@proxy-up/proxy/browser";
+import type { ProxyProviderInterface } from "../lib/proxy";
 import type { UIProvider } from "../stores/types";
 import { generateUUID } from "../stores/types";
 import { SectionHeading, SettingsContainer, SettingRow } from "../components/common";
