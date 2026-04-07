@@ -163,19 +163,19 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     label: "OpenAI",
     providerInterface: "openai",
     baseUrl: "https://api.openai.com/v1",
-    modelExample: "gpt-5.4",
+    models: ["gpt-5.4"],
   },
   {
     label: "Anthropic",
     providerInterface: "anthropic",
     baseUrl: "https://api.anthropic.com/v1",
-    modelExample: "claude-4-6-opus-latest",
+    models: ["claude-4-6-opus-latest"],
   },
   {
     label: "火山引擎 Coding Plan",
     providerInterface: "anthropic",
     baseUrl: "https://ark.cn-beijing.volces.com/api/coding/v1",
-    modelExample: "kimi-k2.5",
+    models: ["kimi-k2.5"],
   },
 ];
 

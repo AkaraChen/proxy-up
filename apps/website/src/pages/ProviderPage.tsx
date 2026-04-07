@@ -159,7 +159,6 @@ function ProviderSidebar() {
         onClose={() => presetModalState.close()}
         onSelectPreset={handleAddPreset}
         onSelectCustom={handleAddCustom}
-        providerCount={config.providers.length}
       />
     </>
   );
@@ -175,6 +174,14 @@ function ModelList({ provider }: { provider: UIProvider }) {
     // 自动进入编辑状态
     const newIndex = provider.models.length;
     setEditingIndex(newIndex);
+  };
+
+  const handleModelBlur = (index: number, model: string) => {
+    setEditingIndex(null);
+
+    if (model.trim() === "") {
+      removeModel(provider.id, index);
+    }
   };
 
   return (
@@ -211,7 +218,7 @@ function ModelList({ provider }: { provider: UIProvider }) {
                   <TextField
                     value={model}
                     onChange={(v) => updateModel(provider.id, index, v)}
-                    onBlur={() => setEditingIndex(null)}
+                    onBlur={() => handleModelBlur(index, model)}
                   >
                     <Input
                       variant="secondary"

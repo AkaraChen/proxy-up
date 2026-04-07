@@ -54,7 +54,7 @@ export function registryToPresets(registry: Registry): ProviderPreset[] {
       label: provider.name["zh-CN"],
       providerInterface,
       baseUrl,
-      modelExample: Object.keys(provider.models)[0] ?? "",
+      models: Object.keys(provider.models),
     };
   });
 }

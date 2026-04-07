@@ -18,6 +18,6 @@ export interface ProviderMeta {
 export interface ProviderPreset {
   baseUrl: string;
   label: string;
-  modelExample: string;
+  models: string[];
   providerInterface: ProxyProviderInterface;
 }

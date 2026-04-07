@@ -13,13 +13,24 @@ interface ProviderPresetModalProps {
 }
 
 function PresetCard({ preset, onSelect }: { preset: ProviderPreset; onSelect: () => void }) {
+  const { t } = useTranslation("provider");
+  const modelCount = preset.models.length;
+  const firstModel = preset.models[0];
+
   return (
     <button
       type="button"
       onClick={onSelect}
       className="px-4 py-3 rounded-lg bg-surface border border-gray-100 hover:border-gray-200 hover:bg-surface-secondary transition-all text-left"
     >
-      <span className="text-sm font-medium text-gray-900">{preset.label}</span>
+      <span className="block text-sm font-medium text-gray-900">{preset.label}</span>
+      <span className="block mt-1 text-xs text-gray-500 truncate">
+        {modelCount === 0
+          ? t("item.noModel")
+          : modelCount === 1
+            ? firstModel
+            : `${modelCount} models · ${firstModel}`}
+      </span>
     </button>
   );
 }
@@ -39,7 +50,7 @@ export function ProviderPresetModal({
       name: `${preset.label}`,
       providerInterface: preset.providerInterface,
       baseUrl: preset.baseUrl,
-      models: [preset.modelExample],
+      models: preset.models.length > 0 ? [...preset.models] : [""],
     };
     onSelectPreset(newProvider);
     onClose();
