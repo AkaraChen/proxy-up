@@ -50,6 +50,7 @@ interface Resources {
     gateway: "Gateway";
     github: "GitHub";
     provider: "Provider";
+    settings: "Settings";
   };
   provider: {
     "advanced.defaultProvider.description": "Mark this provider as the default for all gateway requests.";
@@ -95,6 +96,16 @@ interface Resources {
     "preset.title": "Select Provider Template";
     "sidebar.empty": "No providers yet.\nClick + to add one.";
     "sidebar.heading": "Providers";
+  };
+  settings: {
+    description: "Manage the local interface preferences for Proxy Up.";
+    "language.ariaLabel": "Select language";
+    "language.description": "Choose the interface language.";
+    "language.label": "Language";
+    "language.options.en": "English";
+    "language.options.zh": "中文";
+    "preferences.heading": "Preferences";
+    title: "Settings";
   };
   validation: {
     "ports.range": "Port {{port}} must be between 1 and 65535";

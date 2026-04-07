@@ -2,5 +2,6 @@
   "appTitle": "Proxy Up",
   "github": "GitHub",
   "gateway": "网关",
-  "provider": "提供商"
+  "provider": "提供商",
+  "settings": "设置"
 }

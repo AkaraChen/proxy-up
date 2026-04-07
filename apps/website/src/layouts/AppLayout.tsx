@@ -2,7 +2,6 @@ import { Link } from "@heroui/react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import type { ReactNode } from "react";
-import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { GatewayStatusIcon } from "../components/GatewayStatusIcon";
 import { GatewayControls } from "../components/GatewayControls";
 import { ErrorMessage } from "../components/ErrorMessage";
@@ -15,10 +14,11 @@ function AppLayout({ children }: AppLayoutProps) {
   const { t } = useTranslation("navigation");
   const [location, navigate] = useLocation();
 
-  const NAV_ITEMS = [
+  const primaryNavItems = [
     { label: t("gateway"), href: "/" },
     { label: t("provider"), href: "/provider" },
   ];
+  const settingsNavItem = { label: t("settings"), href: "/settings" };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -33,7 +33,6 @@ function AppLayout({ children }: AppLayoutProps) {
         <div className="flex items-center gap-4">
           <GatewayStatusIcon />
           <GatewayControls />
-          <LanguageSwitcher />
           <Link
             href="https://github.com/AkaraChen/proxy-up"
             target="_blank"
@@ -49,9 +48,9 @@ function AppLayout({ children }: AppLayoutProps) {
       </header>
 
       <div className="flex flex-1 bg-background">
-        <nav className="w-52 shrink-0 bg-secondary py-4 px-3">
+        <nav className="flex w-52 shrink-0 flex-col bg-secondary px-3 py-4">
           <ul className="flex flex-col gap-1">
-            {NAV_ITEMS.map((item) => {
+            {primaryNavItems.map((item) => {
               const isActive = location === item.href;
               return (
                 <li key={item.href}>
@@ -71,6 +70,22 @@ function AppLayout({ children }: AppLayoutProps) {
               );
             })}
           </ul>
+
+          <div className="mt-auto pt-4">
+            <div className="mb-3 h-px bg-gray-100" />
+            <button
+              type="button"
+              onClick={() => navigate(settingsNavItem.href)}
+              className={[
+                "w-full rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
+                location === settingsNavItem.href
+                  ? "bg-surface text-gray-900"
+                  : "text-gray-600 hover:bg-surface-tertiary hover:text-gray-900",
+              ].join(" ")}
+            >
+              {settingsNavItem.label}
+            </button>
+          </div>
         </nav>
 
         <main className="flex-1 overflow-auto">{children}</main>

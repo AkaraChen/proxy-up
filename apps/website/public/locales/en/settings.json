@@ -1,0 +1,10 @@
+{
+  "title": "Settings",
+  "description": "Manage the local interface preferences for Proxy Up.",
+  "preferences.heading": "Preferences",
+  "language.label": "Language",
+  "language.description": "Choose the interface language.",
+  "language.ariaLabel": "Select language",
+  "language.options.en": "English",
+  "language.options.zh": "中文"
+}

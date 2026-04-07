@@ -4,6 +4,7 @@ import { Toast } from "@heroui/react";
 import AppLayout from "./layouts/AppLayout";
 import GatewayPage from "./pages/GatewayPage";
 import ProviderPage from "./pages/ProviderPage";
+import SettingsPage from "./pages/SettingsPage";
 import { AppInitializer } from "./components/AppInitializer";
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
           <Switch>
             <Route path="/" component={GatewayPage} />
             <Route path="/provider" component={ProviderPage} />
+            <Route path="/settings" component={SettingsPage} />
           </Switch>
         </AppLayout>
       </AppInitializer>

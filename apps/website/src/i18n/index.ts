@@ -10,7 +10,7 @@ void i18n
   .init({
     fallbackLng: "en",
     debug: import.meta.env.DEV,
-    ns: ["common", "gateway", "provider", "navigation", "validation"],
+    ns: ["common", "gateway", "provider", "navigation", "settings", "validation"],
     defaultNS: "common",
     backend: { loadPath: "/locales/{{lng}}/{{ns}}.json" },
     detection: { order: ["localStorage", "navigator", "htmlTag"], caches: ["localStorage"] },

@@ -1,0 +1,10 @@
+{
+  "title": "设置",
+  "description": "管理 Proxy Up 的本地界面偏好。",
+  "preferences.heading": "偏好",
+  "language.label": "语言",
+  "language.description": "切换界面的显示语言。",
+  "language.ariaLabel": "选择语言",
+  "language.options.en": "English",
+  "language.options.zh": "中文"
+}
