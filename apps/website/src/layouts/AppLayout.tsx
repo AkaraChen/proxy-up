@@ -10,6 +10,29 @@ interface AppLayoutProps {
   children: ReactNode;
 }
 
+interface NavItemButtonProps {
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}
+
+function NavItemButton({ label, isActive, onClick }: NavItemButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+        isActive
+          ? "bg-surface text-gray-900"
+          : "text-gray-600 hover:bg-surface-tertiary hover:text-gray-900",
+      ].join(" ")}
+    >
+      {label}
+    </button>
+  );
+}
+
 function AppLayout({ children }: AppLayoutProps) {
   const { t } = useTranslation("navigation");
   const [location, navigate] = useLocation();
@@ -54,18 +77,11 @@ function AppLayout({ children }: AppLayoutProps) {
               const isActive = location === item.href;
               return (
                 <li key={item.href}>
-                  <button
-                    type="button"
+                  <NavItemButton
+                    label={item.label}
+                    isActive={isActive}
                     onClick={() => navigate(item.href)}
-                    className={[
-                      "w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                      isActive
-                        ? "bg-surface text-gray-900"
-                        : "text-gray-600 hover:bg-surface-tertiary hover:text-gray-900",
-                    ].join(" ")}
-                  >
-                    {item.label}
-                  </button>
+                  />
                 </li>
               );
             })}
@@ -73,18 +89,11 @@ function AppLayout({ children }: AppLayoutProps) {
 
           <div className="mt-auto pt-4">
             <div className="mb-3 h-px bg-gray-100" />
-            <button
-              type="button"
+            <NavItemButton
+              label={settingsNavItem.label}
+              isActive={location === settingsNavItem.href}
               onClick={() => navigate(settingsNavItem.href)}
-              className={[
-                "w-full rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
-                location === settingsNavItem.href
-                  ? "bg-surface text-gray-900"
-                  : "text-gray-600 hover:bg-surface-tertiary hover:text-gray-900",
-              ].join(" ")}
-            >
-              {settingsNavItem.label}
-            </button>
+            />
           </div>
         </nav>
 
