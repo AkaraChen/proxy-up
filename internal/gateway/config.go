@@ -268,10 +268,7 @@ func buildAllClusters(opts envoyBuildOpts) []any {
 	}
 	seen := map[string]bool{}
 	for _, p := range opts.providers {
-		name := p.ClusterName
-		if name == "" {
-			name = p.ProviderInterface
-		}
+		name := p.GetClusterName()
 		if seen[name] {
 			continue
 		}
@@ -333,10 +330,7 @@ func providerRoutes(providers []NormalizedProvider) []any {
 	routes := []any{}
 	seen := map[string]bool{}
 	for _, p := range providers {
-		name := p.ClusterName
-		if name == "" {
-			name = p.ProviderInterface
-		}
+		name := p.GetClusterName()
 		if seen[name] {
 			continue
 		}
