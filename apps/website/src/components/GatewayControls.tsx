@@ -10,6 +10,10 @@ import {
 } from "../api/hooks";
 import { useProxyConfigStore, useProxyUIStore } from "../stores";
 
+function getErrorMessage(error: unknown, defaultMessage: string): string {
+  return error instanceof Error ? error.message : defaultMessage;
+}
+
 export function GatewayControls() {
   const { t } = useTranslation("gateway");
   const { data: status } = useStatus();
@@ -36,7 +40,7 @@ export function GatewayControls() {
       setError(null);
       await startMutation.mutateAsync();
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to start gateway");
+      setError(getErrorMessage(error, "Failed to start gateway"));
     } finally {
       setStarting(false);
     }
@@ -47,7 +51,7 @@ export function GatewayControls() {
       setError(null);
       await stopMutation.mutateAsync();
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to stop gateway");
+      setError(getErrorMessage(error, "Failed to stop gateway"));
     }
   };
 
@@ -57,7 +61,7 @@ export function GatewayControls() {
       setError(null);
       await restartMutation.mutateAsync();
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to restart gateway");
+      setError(getErrorMessage(error, "Failed to restart gateway"));
     } finally {
       setStarting(false);
     }
@@ -82,8 +86,9 @@ export function GatewayControls() {
       await saveMutation.mutateAsync(serverConfig);
       toast.success(t("controls.saveSuccess"));
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to save config");
-      toast.danger(error instanceof Error ? error.message : "Failed to save config");
+      const message = getErrorMessage(error, "Failed to save config");
+      setError(message);
+      toast.danger(message);
     }
   };
 
