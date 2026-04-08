@@ -65,6 +65,16 @@ type NormalizedProvider struct {
 	ProviderInterface string
 }
 
+// GetClusterName returns the cluster name for routing purposes.
+// If ClusterName is explicitly set, it uses that; otherwise it falls back
+// to ProviderInterface.
+func (p NormalizedProvider) GetClusterName() string {
+	if p.ClusterName != "" {
+		return p.ClusterName
+	}
+	return p.ProviderInterface
+}
+
 // hashSuffix returns the first 8 hex digits of the FNV-1a 32-bit hash of input.
 // Matches the TypeScript implementation used for cluster name generation.
 func hashSuffix(input string) string {
