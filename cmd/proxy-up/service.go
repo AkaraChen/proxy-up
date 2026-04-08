@@ -48,6 +48,16 @@ func runServiceCommand() error {
 	return svc.Run()
 }
 
+// getServiceStatus returns the service status and handles common error patterns.
+// The returned error is wrapped with context if it's not service.ErrNotInstalled.
+func getServiceStatus(svc service.Service) (service.Status, error) {
+	status, err := svc.Status()
+	if err != nil && !errors.Is(err, service.ErrNotInstalled) {
+		return status, fmt.Errorf("failed to inspect service status: %w", err)
+	}
+	return status, err
+}
+
 func runInstallCommand() error {
 	if _, err := newProxyUpApp(); err != nil {
 		return err
@@ -58,20 +68,19 @@ func runInstallCommand() error {
 		return err
 	}
 
-	status, err := svc.Status()
-	switch {
-	case errors.Is(err, service.ErrNotInstalled):
+	status, err := getServiceStatus(svc)
+	if errors.Is(err, service.ErrNotInstalled) {
 		if err := svc.Install(); err != nil {
 			return fmt.Errorf("failed to install service: %w", err)
 		}
 		log.Printf("proxy-up service installed")
 		return nil
-	case err != nil:
-		return fmt.Errorf("failed to inspect service status: %w", err)
-	default:
-		log.Printf("proxy-up service is already installed (%s)", serviceStatusString(status))
-		return nil
 	}
+	if err != nil {
+		return err
+	}
+	log.Printf("proxy-up service is already installed (%s)", serviceStatusString(status))
+	return nil
 }
 
 func runStartCommand() error {
@@ -84,15 +93,14 @@ func runStartCommand() error {
 		return err
 	}
 
-	status, err := svc.Status()
-	switch {
-	case errors.Is(err, service.ErrNotInstalled):
+	status, err := getServiceStatus(svc)
+	if errors.Is(err, service.ErrNotInstalled) {
 		if err := svc.Install(); err != nil {
 			return fmt.Errorf("failed to install service: %w", err)
 		}
-	case err != nil:
-		return fmt.Errorf("failed to inspect service status: %w", err)
-	case status == service.StatusRunning:
+	} else if err != nil {
+		return err
+	} else if status == service.StatusRunning {
 		openBrowser(localServerURL())
 		log.Printf("proxy-up service is already running at %s", localServerURL())
 		return nil
@@ -116,14 +124,15 @@ func runStopCommand() error {
 		return err
 	}
 
-	status, err := svc.Status()
-	switch {
-	case errors.Is(err, service.ErrNotInstalled):
+	status, err := getServiceStatus(svc)
+	if errors.Is(err, service.ErrNotInstalled) {
 		log.Printf("proxy-up service is not installed")
 		return nil
-	case err != nil:
-		return fmt.Errorf("failed to inspect service status: %w", err)
-	case status != service.StatusRunning:
+	}
+	if err != nil {
+		return err
+	}
+	if status != service.StatusRunning {
 		log.Printf("proxy-up service is already stopped")
 		return nil
 	}
@@ -142,14 +151,15 @@ func runUninstallCommand() error {
 		return err
 	}
 
-	status, err := svc.Status()
-	switch {
-	case errors.Is(err, service.ErrNotInstalled):
+	status, err := getServiceStatus(svc)
+	if errors.Is(err, service.ErrNotInstalled) {
 		log.Printf("proxy-up service is not installed")
 		return nil
-	case err != nil:
-		return fmt.Errorf("failed to inspect service status: %w", err)
-	case status == service.StatusRunning:
+	}
+	if err != nil {
+		return err
+	}
+	if status == service.StatusRunning {
 		if err := svc.Stop(); err != nil {
 			return fmt.Errorf("failed to stop service before uninstall: %w", err)
 		}
