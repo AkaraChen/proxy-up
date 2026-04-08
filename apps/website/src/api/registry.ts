@@ -42,8 +42,8 @@ function inferInterface(endpoints: { anthropic?: string; openai?: string }): {
     return { providerInterface: "openai", baseUrl: openUrl! };
   }
 
-  const baseUrl =
-    anthUrl.includes("/v1") || !openUrl ? anthUrl : openUrl.includes("/v1") ? openUrl : anthUrl;
+  // Use openai URL only when anthropic URL lacks "/v1" but openai URL has it
+  const baseUrl = !anthUrl.includes("/v1") && openUrl?.includes("/v1") ? openUrl : anthUrl;
   return { providerInterface: "anthropic", baseUrl };
 }
 
