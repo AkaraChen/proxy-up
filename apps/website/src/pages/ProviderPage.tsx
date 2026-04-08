@@ -20,7 +20,7 @@ import {
   PencilIcon,
 } from "@heroicons/react/24/outline";
 import { useProxyConfigStore, useProxyUIStore } from "../stores";
-import { PROVIDER_LIBRARY } from "../components/config/data";
+import { PROVIDER_LIBRARY, getProviderMeta } from "../components/config/data";
 import { ProviderPresetModal } from "../components/ProviderPresetModal";
 import type { ProxyProviderInterface } from "../lib/proxy";
 import type { UIProvider } from "../stores/types";
@@ -298,7 +298,7 @@ function ProviderPanel() {
   const handleTypeChange = (key: Key | null) => {
     if (key == null) return;
     const providerInterface = key as ProxyProviderInterface;
-    const meta = PROVIDER_LIBRARY.find((m) => m.providerInterface === providerInterface);
+    const meta = getProviderMeta(providerInterface);
     update({
       providerInterface,
       // 为所有空 model 自动填充示例值
@@ -308,7 +308,7 @@ function ProviderPanel() {
     });
   };
 
-  const meta = PROVIDER_LIBRARY.find((m) => m.providerInterface === provider.providerInterface);
+  const meta = getProviderMeta(provider.providerInterface);
 
   return (
     <div className="flex-1 overflow-auto">
