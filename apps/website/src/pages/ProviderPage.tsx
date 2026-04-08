@@ -270,23 +270,15 @@ function ProviderPanel() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
 
-  if (selectedProviderId === null || !config.providers.find((p) => p.id === selectedProviderId)) {
+  const provider = config.providers.find((p) => p.id === selectedProviderId);
+
+  if (!provider) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-400">
         <div className="text-center">
           <p className="text-sm">{t("panel.unselected.primary")}</p>
           <p className="text-sm">{t("panel.unselected.secondary")}</p>
         </div>
-      </div>
-    );
-  }
-
-  const provider = config.providers.find((p) => p.id === selectedProviderId);
-  if (!provider) {
-    // This should never happen due to earlier check, but handle gracefully
-    return (
-      <div className="flex-1 flex items-center justify-center text-gray-400">
-        <p className="text-sm">{t("panel.unselected.primary")}</p>
       </div>
     );
   }
