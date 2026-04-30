@@ -33,7 +33,7 @@
     "@types/react-dom": "catalog:",
     "i18next-cli": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "~5.9.3",
+    "typescript": "~6.0.0",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   }
