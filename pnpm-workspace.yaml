@@ -5,7 +5,7 @@ packages:
 
 catalog:
   "@effect/platform": ^0.96.0
-  "@effect/platform-node": ^0.106.0
+  "@effect/platform-node": ^0.108.0
   "@heroicons/react": ^2.2.0
   "@heroui/react": ^3.0.2
   "@heroui/styles": ^3.0.2
